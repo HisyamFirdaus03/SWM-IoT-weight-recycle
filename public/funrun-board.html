@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fun Run — Papan Kitar Semula</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Hanken+Grotesk:wght@500;600;700&display=swap">
+<style>
+:root{
+  --ground:#F3F6F2; --card:#FFFFFF; --line:#DCE4DE; --track:#D3DDD6;
+  --ink:#0D1B14; --ink-2:#44554C;
+  --green:#0B7A4B; --green-fill:#12A363;
+  --amber:#F5A20B; --amber-ink:#8F4C00;
+  --tile:#13221B; --tile-top:#1A2D24; --seam:#06100B;
+  --display:'Barlow Condensed','Arial Narrow',sans-serif;
+  --body:'Hanken Grotesk',system-ui,sans-serif;
+  --gut:clamp(16px,2.2vw,44px);
+  --move:800ms; --ease-move:cubic-bezier(.65,0,.35,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--body)}
+.board{height:100vh;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto}
+
+/* header */
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;padding:clamp(14px,1.6vw,32px) var(--gut) clamp(16px,1.6vw,32px);position:relative;z-index:3;background:var(--ground)}
+.over{font-weight:700;font-size:clamp(14px,1.3vw,26px);letter-spacing:.18em;text-transform:uppercase;color:var(--green)}
+.title{margin:4px 0 0;font-family:var(--display);font-weight:800;font-size:clamp(40px,4.8vw,96px);line-height:.92;text-transform:uppercase;letter-spacing:.01em}
+.meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.date{font-weight:700;font-size:clamp(14px,1.3vw,26px);letter-spacing:.18em;text-transform:uppercase;color:var(--green)}
+.clock{font-family:var(--display);font-weight:700;font-size:clamp(40px,4.2vw,84px);line-height:1;font-variant-numeric:tabular-nums}
+.clock small{font-family:var(--body);font-weight:600;font-size:.3em;letter-spacing:.12em;color:var(--ink-2);margin-left:.3em}
+
+/* stage: the disc fills 3/5 of the width and is taller than the stage, so it bleeds top and bottom */
+.stage{position:relative;overflow:hidden;container-type:size;min-height:0}
+.disc{--D:150cqh;--edge:57cqw;position:absolute;top:50%;left:0;width:var(--D);height:var(--D);margin-top:calc(var(--D) / -2);border-radius:50%;
+  transform:translateX(calc(var(--edge) - var(--D)));transition:transform var(--move) var(--ease-move);will-change:transform;z-index:1}
+.disc.right{transform:translateX(calc(100cqw - var(--edge)))}
+.fill{position:absolute;inset:0;border-radius:50%;transition:opacity var(--move) var(--ease-move)}
+.fill.green{background:var(--green);transition:none}
+.disc.att .fill.green{opacity:0;transition:opacity 0s var(--move)}
+.fill.amber{background:var(--amber);opacity:0}
+.disc.att .fill.amber{opacity:1}
+/* running-track lanes */
+.lanes{position:absolute;inset:0;border-radius:50%;pointer-events:none}
+.lanes i{position:absolute;border-radius:50%;border:max(3px,.5cqh) solid rgba(255,255,255,.26)}
+.fill.amber .lanes i{border-color:rgba(13,27,20,.16)}
+.lanes i:nth-child(1){inset:2%}.lanes i:nth-child(2){inset:11.5%}.lanes i:nth-child(3){inset:21%}
+.gbox{position:absolute;inset:0}
+.glyph{position:absolute;left:50%;top:50%;width:84cqh;height:84cqh;margin:-42cqh 0 0 -42cqh;transition:opacity calc(var(--move)*.31) ease}
+.glyph svg{width:100%;height:100%;overflow:visible;display:block}
+.g-recycle{color:#fff;opacity:1;transition-delay:calc(var(--move)*.56)}
+.disc.att .g-recycle{opacity:0;transition-delay:calc(var(--move)*.375)}
+.g-runner{color:var(--ink);opacity:0;transition-delay:calc(var(--move)*.375)}
+.disc.att .g-runner{opacity:1;transition-delay:calc(var(--move)*.56)}
+
+/* runner: SMIL run cycle in the SVG (limbs + body bob); far-side limbs recede */
+.g-runner .far{opacity:.45}
+
+/* recycle mark: a third of a turn every 2.2 s; its 3-fold symmetry makes each stop look identical.
+   Rotates about the mark's area centroid, not its bounding-box centre. */
+.g-recycle path{transform-box:view-box;transform-origin:102.17px 98.28px}
+.disc:not(.att) .g-recycle path{animation:third 2.2s cubic-bezier(.65,0,.25,1) 1s infinite}
+@keyframes third{0%{transform:rotate(0)}35%{transform:rotate(120deg)}100%{transform:rotate(120deg)}}
+
+/* number panels: the 2/5 the disc leaves free */
+.panel{position:absolute;top:0;bottom:0;width:40cqw;display:flex;align-items:center;padding:0 clamp(20px,2.4cqw,56px);z-index:2;visibility:hidden}
+.panel.kg{right:0}
+.panel.att{left:0}
+.panel.in{visibility:visible;animation:panelIn .5s cubic-bezier(.2,.8,.2,1) both}
+.panel.out{visibility:visible;animation:panelOut .2s ease-in both}
+@keyframes panelIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes panelOut{from{opacity:1}to{opacity:0}}
+.main{width:100%;display:flex;flex-direction:column;gap:clamp(12px,2.2cqh,26px);min-width:0}
+.kicker{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.kicker h2{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(26px,5.4cqh,54px);letter-spacing:.04em;text-transform:uppercase;line-height:1}
+.delta{font-family:var(--display);font-weight:800;font-size:clamp(18px,3.6cqh,34px);padding:2px 14px;border-radius:999px;opacity:0}
+.panel.kg .delta{background:#E3F4EA;color:var(--green)}
+.panel.att .delta{background:#FFF1D6;color:var(--amber-ink)}
+.delta.show-a{animation:deltaA 2.6s ease-out both}.delta.show-b{animation:deltaB 2.6s ease-out both}
+@keyframes deltaA{0%{opacity:0;transform:translateY(8px)}12%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0}}
+@keyframes deltaB{0%{opacity:0;transform:translateY(8px)}12%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0}}
+
+.digits{display:flex;align-items:flex-end;gap:.05em;font-family:var(--display);font-weight:800}
+.panel.kg .digits{font-size:min(10.2cqw,30cqh,240px)}.panel.kg .digits.wide{font-size:min(8.2cqw,26cqh,196px)}
+.panel.att .digits{font-size:min(11.5cqw,36cqh,260px)}.panel.att .digits.wide{font-size:min(9.2cqw,30cqh,214px)}
+.unit{font-family:var(--display);font-weight:800;font-size:.26em;margin:0 0 .06em .08em;color:var(--ink);line-height:1}
+.dot{width:.12em;height:.12em;border-radius:50%;background:var(--green);margin:0 .03em .02em}
+
+/* split-flap tile */
+.flap{position:relative;width:.68em;height:1.06em;perspective:4em;color:#fff;flex-shrink:0}
+.flap.small{font-size:.72em}
+.panel.kg .flap{color:#7BE3AE}
+.panel.att .flap{color:#FFB224}
+.half{position:absolute;left:0;right:0;height:50%;overflow:hidden;background:var(--tile);backface-visibility:hidden}
+.half span{position:absolute;left:0;right:0;height:1.06em;line-height:1.06em;text-align:center;margin-top:-.035em}
+.top,.top-flip{top:0;border-radius:.06em .06em 0 0;background:var(--tile-top)}
+.bottom,.bottom-flip{bottom:0;border-radius:0 0 .06em .06em}
+.bottom span,.bottom-flip span{top:-100%}
+.top span,.top-flip span{top:0}
+.top-flip{transform-origin:50% 100%;z-index:2;opacity:0}
+.bottom-flip{transform-origin:50% 0;z-index:2}
+.flap::after{content:"";position:absolute;left:0;right:0;top:50%;height:.012em;margin-top:-.006em;background:var(--seam);z-index:3}
+.flap.go-a .top-flip{animation:topA .24s ease-in both}.flap.go-b .top-flip{animation:topB .24s ease-in both}
+.flap.go-a .bottom-flip{animation:botA .24s ease-out both}.flap.go-b .bottom-flip{animation:botB .24s ease-out both}
+@keyframes topA{0%{opacity:1;transform:rotateX(0)}99%{opacity:1}100%{opacity:0;transform:rotateX(-90deg)}}
+@keyframes topB{0%{opacity:1;transform:rotateX(0)}99%{opacity:1}100%{opacity:0;transform:rotateX(-90deg)}}
+@keyframes botA{from{transform:rotateX(90deg)}to{transform:rotateX(0)}}
+@keyframes botB{from{transform:rotateX(90deg)}to{transform:rotateX(0)}}
+
+/* target */
+.goal{display:flex;flex-direction:column;gap:10px}
+.goal-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-weight:600;font-size:clamp(15px,3.2cqh,28px);color:var(--ink-2)}
+.goal-row b{font-family:var(--display);font-weight:800;font-size:1.25em;letter-spacing:.02em}
+.panel.kg .goal-row b{color:var(--green)}.panel.att .goal-row b{color:var(--amber-ink)}
+.bar{height:clamp(12px,1.9cqh,18px);border-radius:999px;background:#1A2D24;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:999px;transition:width 1.2s cubic-bezier(.22,1,.36,1)}
+.panel.kg .bar i{background:var(--green-fill)}.panel.att .bar i{background:var(--amber)}
+.tabs{display:flex;gap:10px;width:clamp(110px,9vw,180px)}
+.tab{flex:1;height:6px;border-radius:999px;background:var(--track);overflow:hidden}
+.tab i{display:block;height:100%;width:0;border-radius:999px;background:var(--ink)}
+.tab.on i{animation:fill var(--scene-ms) linear both}
+@keyframes fill{from{width:0}to{width:100%}}
+
+/* latest weighings live inside the weight panel */
+.feed{display:flex;flex-direction:column;border-top:1px solid var(--line);margin-top:4px}
+.feed h3{margin:12px 0 4px;font-size:clamp(12px,2cqh,16px);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2)}
+.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:14px;padding:8px 0;border-bottom:1px solid #E6ECE8}
+.row .when{font-variant-numeric:tabular-nums;color:var(--ink-2);font-weight:600;font-size:clamp(13px,2.2cqh,19px)}
+.row .kgv{font-family:var(--display);font-weight:800;font-size:clamp(20px,3.6cqh,32px);font-variant-numeric:tabular-nums;line-height:1}
+.row .rp{font-family:var(--display);font-weight:800;font-size:clamp(16px,2.8cqh,26px);color:var(--amber-ink);font-variant-numeric:tabular-nums;min-width:7.5ch;text-align:right;line-height:1}
+.chip{justify-self:start;display:inline-block;padding:3px 9px;border-radius:6px;font-weight:700;font-size:clamp(11px,1.8cqh,15px);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.g-plastik{background:#E2EEFF;color:#0A4AA3}.g-kertas{background:#FFF0D3;color:#7A4100}.g-logam{background:#E8ECEF;color:#323E46}.g-kaca{background:#DAF4EE;color:#0A6152}.g-lain{background:#F1E7FF;color:#5E2A9C}
+
+/* footer */
+.foot{background:#064D2F;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:clamp(10px,.9vw,18px) var(--gut);font-weight:600;font-size:clamp(13px,.95vw,19px);position:relative;z-index:3}
+.foot .slogan{font-family:var(--display);font-weight:800;font-size:1.35em;letter-spacing:.06em;text-transform:uppercase;color:#FFD27A}
+.steps{display:flex;gap:clamp(12px,1.4vw,28px);align-items:center}
+.steps span{display:flex;align-items:center;gap:8px}
+.steps b{display:inline-grid;place-items:center;width:1.6em;height:1.6em;border-radius:50%;background:#fff;color:#064D2F;font-weight:800}
+
+/* narrow screens: disc sits on top, no travel; panels stack beneath */
+@media (max-width:760px){
+  .board{height:auto;min-height:100vh}
+  .stage{height:auto;container-type:inline-size;display:flex;flex-direction:column;align-items:center;padding:16px 16px 24px}
+  .disc,.disc.right{position:relative;top:auto;margin:0 0 20px;width:62vw;height:62vw;transform:none}
+  .title{font-size:min(9vw,40px)}
+  .meta{align-items:flex-start}
+  .clock{font-size:36px}
+  .over{font-size:12px}
+  .glyph{width:46%;height:46%;margin:-23% 0 0 -23%}
+  .disc.right .g-recycle{transform:none}
+  .panel{position:relative;width:100%;padding:0;display:none}
+  .panel.in{display:flex}
+  .panel .digits,.panel.kg .digits,.panel.att .digits{font-size:min(16vw,110px)}.panel .digits.wide{font-size:min(13vw,90px)}
+  .kicker h2{font-size:30px}
+  .main{gap:14px}
+  .goal-row{font-size:15px}
+  .row{grid-template-columns:minmax(0,1fr) auto auto}.row .when{display:none}
+  .steps,.foot .where{display:none}
+  .foot{justify-content:center}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.panel.in{opacity:1}}
+</style>
+</head>
+<body>
+<div class="board">
+  <header class="head">
+    <div>
+      <div class="over">KITARecycle × SWM Environment</div>
+      <h1 class="title">[Nama Acara] Fun Run</h1>
+    </div>
+    <div class="meta">
+      <div class="date" id="date"></div>
+      <div class="clock" id="clock">00:00<small>MYT</small></div>
+    </div>
+  </header>
+
+  <main class="stage">
+    <div class="disc" id="disc" aria-hidden="true">
+      <div class="fill green"><div class="lanes"><i></i><i></i><i></i></div></div>
+      <div class="fill amber"><div class="lanes"><i></i><i></i><i></i></div></div>
+      <div class="gbox">
+      <div class="glyph g-recycle">
+        <!-- universal recycling symbol (outline from Noto Sans Symbols, SIL OFL) -->
+        <svg viewBox="0 0 200 200"><path fill="currentColor" d="M59.1 171.7Q52.4 171.7 46.4 167.8Q40.4 163.9 36.7 157.8L18.3 125.4Q16.3 122 15.3 118.4Q14.3 114.8 14.3 111.1Q14.3 104.6 17.4 99.3L31.7 74.3L63 93.5L36.5 140.2L33.3 135.2H96.1V171.7ZM71.1 113.7 10 78.5 14.8 70.4 54.1 72.8 75.7 105.7ZM121.5 188.7 103.9 153.5 121.5 118.3H130.9V188.7ZM145.4 171.7H116.5V135.2H171.3L168.3 140.9L137 86.1L168.7 67.4L187 99.6Q190 105 190 111.3Q190 118.9 186.1 125.4L167.4 158Q163.9 164.1 158 167.9Q152.2 171.7 145.4 171.7ZM74.1 74.1 42.2 55.9 60.4 23.7Q63.7 17.8 70 14.6Q76.3 11.3 83.5 11.3H120.9Q128 11.3 134.2 14.6Q140.4 17.8 143.9 23.7L158 48.7L125.9 66.3L99.1 19.6H105.2ZM109.6 70.9 104.8 62.8 165.9 27.6 170.4 35.7 148.7 68.5Z"></path></svg>
+      </div>
+      <div class="glyph g-runner">
+        <svg viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="13" stroke-linecap="round" stroke-linejoin="round">
+          <g transform="translate(-9 0)">
+            <g class="runner">
+              <animateTransform attributeName="transform" type="translate" dur="0.66s" repeatCount="indefinite" values="0 1.00;0 2.78;0 4.33;0 5.00;0 4.33;0 2.78;0 1.00;0 -1.30;0 -3.81;0 -5.00;0 -3.81;0 -1.30;0 1.00;0 2.78;0 4.33;0 5.00;0 4.33;0 2.78;0 1.00;0 -1.30;0 -3.81;0 -5.00;0 -3.81;0 -1.30;0 1.00"></animateTransform>
+              <!-- run cycle generated from joint angles (contact, down, passing, up, air); far-side limbs drawn lighter -->
+              <path class="far" d="M116.0 72.0L137.4 94.4L153.9 73.1"><animate attributeName="d" dur="0.66s" repeatCount="indefinite" values="M116.0 72.0L137.4 94.4L153.9 73.1;M116.0 72.0L134.6 96.8L153.9 77.8;M116.0 72.0L129.5 99.9L152.5 85.7;M116.0 72.0L123.4 102.1L149.1 93.8;M116.0 72.0L116.5 103.0L143.4 101.6;M116.0 72.0L109.0 102.2L135.3 108.3;M116.0 72.0L102.8 100.0L126.8 112.3;M116.0 72.0L98.0 97.2L118.9 114.2;M116.0 72.0L94.4 94.3L112.2 114.6;M116.0 72.0L93.0 92.7L109.1 114.4;M116.0 72.0L93.7 93.6L110.8 114.5;M116.0 72.0L96.4 96.0L116.1 114.5;M116.0 72.0L99.5 98.2L121.6 113.7;M116.0 72.0L102.2 99.8L126.0 112.6;M116.0 72.0L105.2 101.1L130.4 110.9;M116.0 72.0L108.6 102.1L134.8 108.6;M116.0 72.0L112.5 102.8L139.3 105.4;M116.0 72.0L116.6 103.0L143.6 101.4;M116.0 72.0L121.0 102.6L147.3 96.7;M116.0 72.0L125.6 101.5L150.5 91.0;M116.0 72.0L130.2 99.6L152.7 84.8;M116.0 72.0L133.6 97.5L153.7 79.6;M116.0 72.0L136.0 95.7L154.0 75.5;M116.0 72.0L137.6 94.3L153.9 72.8;M116.0 72.0L137.4 94.4L153.9 73.1"></animate></path>
+              <path class="far" d="M102.0 116.0L81.1 142.8L47.1 141.0"><animate attributeName="d" dur="0.66s" repeatCount="indefinite" values="M102.0 116.0L81.1 142.8L47.1 141.0;M102.0 116.0L83.9 144.8L51.1 136.0;M102.0 116.0L89.0 147.4L57.8 133.8;M102.0 116.0L94.9 149.3L64.6 133.8;M102.0 116.0L101.6 150.0L70.7 135.8;M102.0 116.0L108.7 149.3L76.2 139.4;M102.0 116.0L114.7 147.5L80.8 145.7;M102.0 116.0L119.5 145.2L87.8 157.5;M102.0 116.0L123.1 142.7L102.1 169.4;M102.0 116.0L124.8 141.3L117.1 174.4;M102.0 116.0L123.8 142.1L126.1 176.0;M102.0 116.0L121.0 144.2L130.0 177.0;M102.0 116.0L118.0 146.0L128.5 178.4;M102.0 116.0L115.3 147.3L119.3 181.1;M102.0 116.0L112.3 148.4L104.8 181.5;M102.0 116.0L109.1 149.3L93.1 179.3;M102.0 116.0L105.4 149.8L87.0 178.5;M102.0 116.0L101.4 150.0L83.0 178.6;M102.0 116.0L97.3 149.7L78.8 178.2;M102.0 116.0L92.8 148.7L74.0 177.1;M102.0 116.0L88.4 147.1L69.3 175.3;M102.0 116.0L85.0 145.4L63.1 171.5;M102.0 116.0L82.5 143.9L54.6 163.2;M102.0 116.0L80.9 142.7L47.9 151.0;M102.0 116.0L81.1 142.8L47.1 141.0"></animate></path>
+              <circle cx="128" cy="38" r="15" fill="currentColor" stroke="none"></circle>
+              <path d="M120 64 102 116"></path>
+              <path d="M102.0 116.0L118.0 146.0L128.5 178.4"><animate attributeName="d" dur="0.66s" repeatCount="indefinite" values="M102.0 116.0L118.0 146.0L128.5 178.4;M102.0 116.0L115.3 147.3L119.3 181.1;M102.0 116.0L112.3 148.4L104.8 181.5;M102.0 116.0L109.1 149.3L93.1 179.3;M102.0 116.0L105.4 149.8L87.0 178.5;M102.0 116.0L101.4 150.0L83.0 178.6;M102.0 116.0L97.3 149.7L78.8 178.2;M102.0 116.0L92.8 148.7L74.0 177.1;M102.0 116.0L88.4 147.1L69.3 175.3;M102.0 116.0L85.0 145.4L63.1 171.5;M102.0 116.0L82.5 143.9L54.6 163.2;M102.0 116.0L80.9 142.7L47.9 151.0;M102.0 116.0L81.1 142.8L47.1 141.0;M102.0 116.0L83.9 144.8L51.1 136.0;M102.0 116.0L89.0 147.4L57.8 133.8;M102.0 116.0L94.9 149.3L64.6 133.8;M102.0 116.0L101.6 150.0L70.7 135.8;M102.0 116.0L108.7 149.3L76.2 139.4;M102.0 116.0L114.7 147.5L80.8 145.7;M102.0 116.0L119.5 145.2L87.8 157.5;M102.0 116.0L123.1 142.7L102.1 169.4;M102.0 116.0L124.8 141.3L117.1 174.4;M102.0 116.0L123.8 142.1L126.1 176.0;M102.0 116.0L121.0 144.2L130.0 177.0;M102.0 116.0L118.0 146.0L128.5 178.4"></animate></path>
+              <path d="M116.0 72.0L99.5 98.2L121.6 113.7"><animate attributeName="d" dur="0.66s" repeatCount="indefinite" values="M116.0 72.0L99.5 98.2L121.6 113.7;M116.0 72.0L102.2 99.8L126.0 112.6;M116.0 72.0L105.2 101.1L130.4 110.9;M116.0 72.0L108.6 102.1L134.8 108.6;M116.0 72.0L112.5 102.8L139.3 105.4;M116.0 72.0L116.6 103.0L143.6 101.4;M116.0 72.0L121.0 102.6L147.3 96.7;M116.0 72.0L125.6 101.5L150.5 91.0;M116.0 72.0L130.2 99.6L152.7 84.8;M116.0 72.0L133.6 97.5L153.7 79.6;M116.0 72.0L136.0 95.7L154.0 75.5;M116.0 72.0L137.6 94.3L153.9 72.8;M116.0 72.0L137.4 94.4L153.9 73.1;M116.0 72.0L134.6 96.8L153.9 77.8;M116.0 72.0L129.5 99.9L152.5 85.7;M116.0 72.0L123.4 102.1L149.1 93.8;M116.0 72.0L116.5 103.0L143.4 101.6;M116.0 72.0L109.0 102.2L135.3 108.3;M116.0 72.0L102.8 100.0L126.8 112.3;M116.0 72.0L98.0 97.2L118.9 114.2;M116.0 72.0L94.4 94.3L112.2 114.6;M116.0 72.0L93.0 92.7L109.1 114.4;M116.0 72.0L93.7 93.6L110.8 114.5;M116.0 72.0L96.4 96.0L116.1 114.5;M116.0 72.0L99.5 98.2L121.6 113.7"></animate></path>
+            </g>
+          </g>
+        </svg>
+      </div>
+      </div>
+    </div>
+
+    <section class="panel kg" aria-label="Berat dikitar semula">
+      <div class="main">
+        <div class="kicker"><h2>Berat dikitar semula</h2><span class="delta" id="kgDelta"></span></div>
+        <div class="digits" id="kgDigits" role="img"></div>
+        <div class="goal">
+          <div class="goal-row"><span>Sasaran <span id="kgGoal"></span> kg</span><b id="kgPct"></b></div>
+          <div class="bar"><i id="kgBar"></i></div>
+        </div>
+        <div class="tabs" aria-hidden="true"><span class="tab"><i></i></span><span class="tab"><i></i></span></div>
+        <div class="feed"><h3>Timbangan terkini</h3><div id="rows"></div></div>
+      </div>
+    </section>
+
+    <section class="panel att" aria-label="Peserta hadir">
+      <div class="main">
+        <div class="kicker"><h2>Peserta hadir</h2><span class="delta" id="attDelta"></span></div>
+        <div class="digits" id="attDigits" role="img"></div>
+        <div class="goal">
+          <div class="goal-row"><span>Sasaran <span id="attGoal"></span> peserta</span><b id="attPct"></b></div>
+          <div class="bar"><i id="attBar"></i></div>
+        </div>
+        <div class="tabs" aria-hidden="true"><span class="tab"><i></i></span><span class="tab"><i></i></span></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span class="slogan">Jom kitar semula sambil berlari!</span>
+    <span class="steps"><span><b>1</b>Imbas QR KITARecycle</span><span><b>2</b>Imbas kad kategori</span><span><b>3</b>Timbang &amp; dapat mata</span></span>
+    <span class="where">[LOKASI]</span>
+  </footer>
+</div>
+
+<script>
+// ---- Config (targets are placeholders until the event team confirms) ----
+// Settings from the URL, so the board can be set up on the day without a redeploy:
+//   ?acara=UTM&lokasi=Dataran%20UTM&sasaranKg=500&sasaranPeserta=1000&dari=2026-10-25T07:00
+//   dari  = count weighings from this Malaysia time (default: midnight today)
+//   demo=1 = random data, for rehearsing without the scale
+const qs = new URLSearchParams(location.search);
+const CONFIG = {
+  targetPeserta: Number(qs.get('sasaranPeserta')) || 1000, targetKg: Number(qs.get('sasaranKg')) || 500,
+  sceneMs: 5000, moveMs: 800, simulate: qs.get('demo') === '1', intervalMs: 3500, feedRows: 3, pollMs: 3000,
+};
+
+// SWM "Jenis Barangan dan RP KITARecycle" rates (RP per kg).
+const ITEMS = [
+  ['Botol Plastik','plastik',3],['Plastik Campur','plastik',10],['Plastik Keras','plastik',2.5],
+  ['Kadbod','kertas',8],['Surat Khabar','kertas',7],['Kertas Campur','kertas',4.4],
+  ['Tin Aluminium','logam',60],['Tin Besi','logam',2],['Botol Kaca','kaca',1.5],['Tetra Pak','lain',1.5]
+];
+
+const $ = id => document.getElementById(id);
+const pad2 = n => String(n).padStart(2,'0');
+const hhmm = d => pad2(d.getHours())+':'+pad2(d.getMinutes());
+document.documentElement.style.setProperty('--scene-ms', CONFIG.sceneMs+'ms');
+document.documentElement.style.setProperty('--move', CONFIG.moveMs+'ms');
+
+// ---- split-flap counter: starts at minInt tiles, adds a tile only when the number needs it ----
+function makeCounter(el, minInt, decimals, unit){
+  const tiles = [];
+  let intCount = 0;
+  const newTile = (small) => {
+    const f = document.createElement('div');
+    f.className = 'flap' + (small ? ' small' : '');
+    f.innerHTML = '<div class="half top"><span></span></div><div class="half bottom"><span></span></div><div class="half top-flip"><span></span></div><div class="half bottom-flip"><span></span></div>';
+    return {el:f, val:'', flips:0};
+  };
+  const growTo = (n) => {
+    while (intCount < n){ const t = newTile(false); el.insertBefore(t.el, el.firstChild); tiles.unshift(t); intCount++; }
+    el.classList.toggle('wide', intCount > minInt);
+  };
+  growTo(minInt);
+  if (decimals){ const d=document.createElement('div'); d.className='dot'; el.appendChild(d); for(let i=0;i<decimals;i++){ const t=newTile(true); el.appendChild(t.el); tiles.push(t); } }
+  if (unit){ const u=document.createElement('span'); u.className='unit'; u.textContent=unit; el.appendChild(u); }
+  const chars = (value) => {
+    growTo(Math.max(minInt, String(Math.floor(value)).length));
+    return value.toFixed(decimals).replace('.','').padStart(intCount+decimals,'0').split('');
+  };
+  const flip = (t, from, to, delay) => {
+    const q = sel => t.el.querySelector(sel+' span');
+    q('.top').textContent = to; q('.bottom').textContent = from;
+    q('.top-flip').textContent = from; q('.bottom-flip').textContent = to;
+    t.el.querySelector('.top-flip').style.animationDelay = delay+'ms';
+    t.el.querySelector('.bottom-flip').style.animationDelay = (delay+240)+'ms';
+    t.flips++; t.el.classList.remove('go-a','go-b'); void t.el.offsetWidth; t.el.classList.add(t.flips%2?'go-a':'go-b');
+    t.val = to;
+  };
+  let last = 0;
+  return {
+    set(value, quiet){
+      last = value;
+      const s = chars(value);
+      tiles.forEach((t,i)=>{
+        if (s[i]===t.val) return;
+        if (quiet){ t.el.querySelectorAll('span').forEach(sp=>sp.textContent=s[i]); t.val=s[i]; return; }
+        flip(t, t.val, s[i], 0);
+      });
+      el.setAttribute('aria-label', value.toFixed(decimals)+(unit?' '+unit:''));
+    },
+    entrance(){ const s = chars(last); tiles.forEach((t,i)=>flip(t, '', s[i], i*40)); }
+  };
+}
+
+const kgC = makeCounter($('kgDigits'), 3, 1, 'kg');
+const attC = makeCounter($('attDigits'), 3, 0, 'orang');
+
+// ---- state: live boards start at 0 and fill from the first poll; demo starts mid-event ----
+const state = CONFIG.simulate ? { attendance: 472, kg: 353.5 } : { attendance: 0, kg: 0 };
+if (qs.get('acara')) document.querySelector('.title').textContent = qs.get('acara') + ' Fun Run';
+if (qs.get('lokasi')) document.querySelector('.where').textContent = qs.get('lokasi');
+let attPop = 0, kgPop = 0, rowPop = 0;
+
+function renderGoals(){
+  const ap = Math.min(100, state.attendance/CONFIG.targetPeserta*100);
+  const kp = Math.min(100, state.kg/CONFIG.targetKg*100);
+  $('attGoal').textContent = CONFIG.targetPeserta.toLocaleString('en-MY');
+  $('kgGoal').textContent = CONFIG.targetKg.toLocaleString('en-MY');
+  $('attPct').textContent = Math.round(ap)+'% dicapai';
+  $('kgPct').textContent = Math.round(kp)+'% terkumpul';
+  $('attBar').style.width = ap+'%'; $('kgBar').style.width = kp+'%';
+}
+
+function addRow(r, animate){
+  const box = $('rows');
+  const el = document.createElement('div');
+  el.className = 'row';
+  el.innerHTML = '<span class="when">'+r.at+'</span><span class="chip g-'+r.group+'">'+r.item+'</span><span class="kgv">'+r.kg.toFixed(2)+' kg</span><span class="rp">+'+r.rp.toFixed(2)+' RP</span>';
+  box.insertBefore(el, box.firstChild);
+  while (box.children.length > CONFIG.feedRows) box.removeChild(box.lastChild);
+  if (animate && !matchMedia('(prefers-reduced-motion: reduce)').matches)
+    el.animate([{opacity:.3, transform:'translateY(-10px)', background:'#FFF1D6'},{opacity:1, transform:'none', background:'#FFF1D6', offset:.35},{opacity:1, transform:'none', background:'rgba(255,241,214,0)'}], {duration:1600, easing:'ease-out'});
+}
+function flash(el, text, n){ el.textContent = text; el.classList.remove('show-a','show-b'); void el.offsetWidth; el.classList.add(n%2?'show-a':'show-b'); }
+
+function randomDrop(at){
+  const [item, group, rate] = ITEMS[Math.floor(Math.random()*ITEMS.length)];
+  const kg = Math.round((0.4+Math.random()*4.4)*100)/100;
+  return { at: hhmm(at), item, group, kg, rp: Math.round(kg*rate*100)/100 };
+}
+
+// Hook for live data: call applyStats({attendance, kg, drop}) from a poller.
+function applyStats({attendance, kg, drop}){
+  if (attendance!=null && attendance!==state.attendance){ const d=attendance-state.attendance; state.attendance=attendance; attC.set(attendance); if(d>0) flash($('attDelta'),'+'+d+' baru',++attPop); }
+  if (kg!=null && kg!==state.kg){ const d=kg-state.kg; state.kg=kg; kgC.set(kg); if(d>0) flash($('kgDelta'),'+'+d.toFixed(1)+' kg',++kgPop); }
+  if (drop) addRow(drop, true);
+  renderGoals();
+}
+
+// ---- scene rotation: panel leaves, disc rolls across and swaps icon, new panel enters ----
+const disc = $('disc');
+const panels = [document.querySelector('.panel.kg'), document.querySelector('.panel.att')];
+const counters = [kgC, attC];
+const tabSets = [...document.querySelectorAll('.tabs')].map(ts=>[...ts.querySelectorAll('.tab')]);
+let current = -1;
+function show(i){
+  const prev = current >= 0 ? panels[current] : null;
+  current = i;
+  const enter = () => {
+    if (prev) prev.classList.remove('out');
+    const p = panels[i];
+    void p.offsetWidth; p.classList.add('in');
+    counters[i].entrance();
+  };
+  const isAtt = i === 1;
+  tabSets.forEach(tabs=>tabs.forEach((t,k)=>{ t.classList.toggle('on', k===i); const bar=t.querySelector('i'); bar.style.animation='none'; void bar.offsetWidth; bar.style.animation=''; }));
+  if (!prev){ disc.classList.toggle('right', isAtt); disc.classList.toggle('att', isAtt); enter(); return; }
+  prev.classList.remove('in'); prev.classList.add('out');
+  setTimeout(()=>{ disc.classList.toggle('right', isAtt); disc.classList.toggle('att', isAtt); }, 150);
+  setTimeout(enter, 150 + CONFIG.moveMs * 0.7);
+}
+
+// SMIL limb animation ignores CSS, so pause it for reduced-motion viewers
+if (matchMedia('(prefers-reduced-motion: reduce)').matches) document.querySelectorAll('.g-runner svg').forEach(svg=>svg.pauseAnimations());
+
+// ---- boot ----
+kgC.set(state.kg, true); attC.set(state.attendance, true); renderGoals();
+if (CONFIG.simulate){
+  const now = Date.now();
+  for (let i=CONFIG.feedRows-1;i>=0;i--) addRow(randomDrop(new Date(now - i*90000)), false);
+}
+function tickClock(){ const d=new Date(); $('clock').innerHTML = pad2(d.getHours())+':'+pad2(d.getMinutes())+'<small>MYT</small>'; $('date').textContent = d.toLocaleDateString('ms-MY',{weekday:'long', day:'numeric', month:'short'}); }
+tickClock(); setInterval(tickClock, 1000);
+show(0);
+setInterval(()=>show((current+1)%panels.length), CONFIG.sceneMs);
+
+// ---- live data from the scale (GET /api/board) ----
+let lastId = null;  // newest weighing already on the board; null until the first poll
+async function poll(){
+  try {
+    const p = new URLSearchParams({ rows: CONFIG.feedRows });
+    if (qs.get('dari')) p.set('dari', qs.get('dari'));
+    const res = await fetch('/api/board?' + p, { cache: 'no-store' });
+    if (!res.ok) return;
+    const b = await res.json();
+    const rows = b.latest.map(r => ({ at: hhmm(new Date(r.at)), item: r.item, group: r.group, kg: r.kg, rp: r.rp, id: r.id })).reverse();
+    if (lastId === null){
+      // First load: show the current totals without "+x baru" flashes.
+      state.attendance = b.attendance; state.kg = b.kg;
+      attC.set(b.attendance, true); kgC.set(b.kg, true); renderGoals();
+      rows.forEach(r => addRow(r, false));
+    } else {
+      const fresh = rows.filter(r => r.id > lastId);
+      fresh.forEach((r, i) => applyStats({ attendance: i === fresh.length - 1 ? b.attendance : null, kg: i === fresh.length - 1 ? b.kg : null, drop: r }));
+      if (!fresh.length) applyStats({ attendance: b.attendance, kg: b.kg, drop: null });
+    }
+    lastId = Math.max(lastId ?? 0, ...b.latest.map(r => r.id));
+  } catch (e) { /* network blip: keep the last numbers, try again next tick */ }
+}
+if (!CONFIG.simulate){ poll(); setInterval(poll, CONFIG.pollMs); }
+
+if (CONFIG.simulate){
+  setInterval(()=>{
+    const join = Math.random()<0.6 ? 1+Math.floor(Math.random()*3) : 0;
+    const drop = Math.random()<0.75 ? randomDrop(new Date()) : null;
+    applyStats({ attendance: state.attendance+join, kg: drop ? Math.round((state.kg+drop.kg)*10)/10 : state.kg, drop });
+  }, CONFIG.intervalMs);
+}
+</script>
+</body>
+</html>
