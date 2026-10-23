@@ -31,6 +31,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/" className="hover:underline">Papan Pemuka</Link>
               <Link href="/accounts" className="hover:underline">Akaun</Link>
               <Link href="/rates" className="hover:underline">Kadar RP</Link>
+              <Link href="/cards" className="hover:underline">Kad Kategori</Link>
             </div>
           </nav>
         </header>

@@ -3,18 +3,30 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 
 // Mock of the KITARecycle backend for the prototype. SQLite via Node's built-in
-// driver, so there are no native npm deps. The file lives in web/data/.
+// driver, so there are no native npm deps. The file lives in web/data/ locally, and in the
+// DATA_DIR volume on the server (see Dockerfile).
 
-const dataDir = path.join(process.cwd(), "data");
-mkdirSync(dataDir, { recursive: true });
-
-// Reuse one connection across hot reloads in dev.
+// Opened on first use, not at import: `next build` imports every route in parallel workers, and
+// opening (and seeding) the file there made them fight over it ("database is locked").
+// One connection is reused across hot reloads in dev.
 const globalForDb = globalThis as unknown as { kitaDb?: DatabaseSync };
-export const db = globalForDb.kitaDb ?? new DatabaseSync(path.join(dataDir, "kitarecycle.db"));
-if (!globalForDb.kitaDb) {
-  globalForDb.kitaDb = db;
-  migrate();
+function open(): DatabaseSync {
+  if (!globalForDb.kitaDb) {
+    const dataDir = process.env.DATA_DIR ?? path.join(process.cwd(), "data");
+    mkdirSync(dataDir, { recursive: true });
+    globalForDb.kitaDb = new DatabaseSync(path.join(dataDir, "kitarecycle.db"));
+    migrate();
+  }
+  return globalForDb.kitaDb;
 }
+
+export const db = new Proxy({} as DatabaseSync, {
+  get(_target, prop) {
+    const real = open();
+    const value = Reflect.get(real, prop, real);
+    return typeof value === "function" ? value.bind(real) : value;
+  },
+});
 
 function migrate() {
   db.exec(`
@@ -82,9 +94,15 @@ function migrate() {
   insAcc.run("SWMM00004787", "Demo Pengguna A", "0120000001");
   insAcc.run("SWMM00001234", "Demo Pengguna B", "0120000002");
 
+  // On the server the key must come from the environment: the dev default is in the repo and the
+  // firmware example, so anyone could post weights with it.
+  const deviceKey = process.env.DEVICE_KEY;
+  if (!deviceKey && process.env.NODE_ENV === "production") {
+    throw new Error("DEVICE_KEY must be set before the first start (it seeds device SCALE-01)");
+  }
   db.prepare("INSERT INTO devices (id, api_key, location) VALUES (?, ?, ?)").run(
     "SCALE-01",
-    process.env.DEVICE_KEY ?? "dev-secret-change-me",
+    deviceKey ?? "dev-secret-change-me",
     "UTM Prototype Station",
   );
 }

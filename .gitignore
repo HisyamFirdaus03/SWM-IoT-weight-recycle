@@ -42,3 +42,6 @@ next-env.d.ts
 
 # local sqlite
 /data
+
+# SQLite database (a Docker volume on the server)
+/data/
