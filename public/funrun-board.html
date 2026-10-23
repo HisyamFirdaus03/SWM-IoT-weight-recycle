@@ -3,102 +3,100 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fun Run — Papan Kitar Semula</title>
+<title>JB NEON X UTM · Papan Kitar Semula</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Hanken+Grotesk:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&amp;family=Hanken+Grotesk:wght@500;600;700&amp;display=swap">
+<!-- Live board for the KITARecycle scale, ported from the "JB NEON X UTM Live Board" design canvas.
+     Data: GET /api/board every 3 s. URL settings (all optional):
+       ?acara=JB%20NEON%20X%20UTM  title          ?lokasi=Dataran%20UTM  footer location
+       ?sasaranKg=500 ?sasaranPeserta=1000        targets for the progress bars
+       ?dari=2026-10-24T06:00   count weighings from this Malaysia time (default: midnight today)
+       ?saat=5                  seconds per scene  ?kito=4  mascot every N scenes (0 = off)
+       ?demo=1                  random numbers, for rehearsing without the scale -->
 <style>
-:root{
-  --ground:#F3F6F2; --card:#FFFFFF; --line:#DCE4DE; --track:#D3DDD6;
-  --ink:#0D1B14; --ink-2:#44554C;
-  --green:#0B7A4B; --green-fill:#12A363;
-  --amber:#F5A20B; --amber-ink:#8F4C00;
-  --tile:#13221B; --tile-top:#1A2D24; --seam:#06100B;
-  --display:'Barlow Condensed','Arial Narrow',sans-serif;
-  --body:'Hanken Grotesk',system-ui,sans-serif;
-  --gut:clamp(16px,2.2vw,44px);
-  --move:800ms; --ease-move:cubic-bezier(.65,0,.35,1);
-}
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--body)}
-.board{height:100vh;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto}
+html,body{margin:0;height:100%}
+body{margin:0;background:#F3F6F2}
+a{color:#0B7A4B}a:hover{color:#064D2F}
+.fr{--ground:#F3F6F2;--line:#DCE4DE;--track:#D3DDD6;--ink:#0D1B14;--ink-2:#44554C;--green:#0B7A4B;--green-fill:#12A363;--amber:#F5A20B;--amber-ink:#8F4C00;--blue:#1C6FB0;--blue-ink:#14548A;--tile:#13221B;--tile-top:#1A2D24;--seam:#06100B;--display:'Barlow Condensed','Arial Narrow',sans-serif;--body:'Hanken Grotesk',system-ui,sans-serif;--gut:clamp(16px,2.2vw,44px);--move:800ms;--ease-move:cubic-bezier(.65,0,.35,1)}
+.fr *{box-sizing:border-box}
 
-/* header */
-.head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;padding:clamp(14px,1.6vw,32px) var(--gut) clamp(16px,1.6vw,32px);position:relative;z-index:3;background:var(--ground)}
-.over{font-weight:700;font-size:clamp(14px,1.3vw,26px);letter-spacing:.18em;text-transform:uppercase;color:var(--green)}
-.title{margin:4px 0 0;font-family:var(--display);font-weight:800;font-size:clamp(40px,4.8vw,96px);line-height:.92;text-transform:uppercase;letter-spacing:.01em}
-.meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
-.date{font-weight:700;font-size:clamp(14px,1.3vw,26px);letter-spacing:.18em;text-transform:uppercase;color:var(--green)}
-.clock{font-family:var(--display);font-weight:700;font-size:clamp(40px,4.2vw,84px);line-height:1;font-variant-numeric:tabular-nums}
-.clock small{font-family:var(--body);font-weight:600;font-size:.3em;letter-spacing:.12em;color:var(--ink-2);margin-left:.3em}
-
-/* stage: the disc fills 3/5 of the width and is taller than the stage, so it bleeds top and bottom */
+/* stage: the disc fills 3/5 of the width and bleeds off the top, bottom and outer edge */
 .stage{position:relative;overflow:hidden;container-type:size;min-height:0}
-.disc{--D:150cqh;--edge:57cqw;position:absolute;top:50%;left:0;width:var(--D);height:var(--D);margin-top:calc(var(--D) / -2);border-radius:50%;
-  transform:translateX(calc(var(--edge) - var(--D)));transition:transform var(--move) var(--ease-move);will-change:transform;z-index:1}
+.disc{--D:150cqh;--edge:57cqw;position:absolute;top:50%;left:0;width:var(--D);height:var(--D);margin-top:calc(var(--D) / -2);border-radius:50%;transform:translateX(calc(var(--edge) - var(--D)));transition:transform var(--move) var(--ease-move);will-change:transform;z-index:1}
 .disc.right{transform:translateX(calc(100cqw - var(--edge)))}
-.fill{position:absolute;inset:0;border-radius:50%;transition:opacity var(--move) var(--ease-move)}
-.fill.green{background:var(--green);transition:none}
-.disc.att .fill.green{opacity:0;transition:opacity 0s var(--move)}
-.fill.amber{background:var(--amber);opacity:0}
-.disc.att .fill.amber{opacity:1}
-/* running-track lanes */
+/* one colour layer per scene: the incoming layer fades in on top, the outgoing one drops out once covered */
+.fill{position:absolute;inset:0;border-radius:50%;opacity:0;z-index:0}
+.fill.on{opacity:1;z-index:2;transition:opacity var(--move) var(--ease-move)}
+.fill.was{opacity:0;z-index:1;transition:opacity 0s var(--move)}
+.fill.green{background:var(--green)}.fill.amber{background:var(--amber)}.fill.blue{background:var(--blue)}
 .lanes{position:absolute;inset:0;border-radius:50%;pointer-events:none}
 .lanes i{position:absolute;border-radius:50%;border:max(3px,.5cqh) solid rgba(255,255,255,.26)}
 .fill.amber .lanes i{border-color:rgba(13,27,20,.16)}
 .lanes i:nth-child(1){inset:2%}.lanes i:nth-child(2){inset:11.5%}.lanes i:nth-child(3){inset:21%}
-.gbox{position:absolute;inset:0}
-.glyph{position:absolute;left:50%;top:50%;width:84cqh;height:84cqh;margin:-42cqh 0 0 -42cqh;transition:opacity calc(var(--move)*.31) ease}
+/* ring breath: the outgoing layer's rings collapse to the centre (outer ring first);
+   the incoming layer's rings burst back out with a pulse (inner ring first) */
+.fill.was .lanes i{animation:laneIn .38s cubic-bezier(.55,0,.9,.45) both}
+.fill.was .lanes i:nth-child(2){animation-delay:40ms}
+.fill.was .lanes i:nth-child(3){animation-delay:80ms}
+.fill.on .lanes i{animation:laneOut .95s cubic-bezier(.2,.75,.3,1) both}
+.fill.on .lanes i:nth-child(3){animation-delay:calc(var(--move)*.5)}
+.fill.on .lanes i:nth-child(2){animation-delay:calc(var(--move)*.5 + 90ms)}
+.fill.on .lanes i:nth-child(1){animation-delay:calc(var(--move)*.5 + 180ms)}
+@keyframes laneIn{0%{transform:scale(1);opacity:1}100%{transform:scale(0);opacity:0}}
+@keyframes laneOut{0%{transform:scale(0);opacity:0}45%{transform:scale(1.06);opacity:1}70%{transform:scale(.985)}100%{transform:scale(1);opacity:1}}
+.glyph{position:absolute;left:50%;top:50%;width:84cqh;height:84cqh;margin:-42cqh 0 0 -42cqh;z-index:3;opacity:0;transition:opacity calc(var(--move)*.31) ease calc(var(--move)*.375)}
+.glyph.on{opacity:1;transition-delay:calc(var(--move)*.56)}
 .glyph svg{width:100%;height:100%;overflow:visible;display:block}
-.g-recycle{color:#fff;opacity:1;transition-delay:calc(var(--move)*.56)}
-.disc.att .g-recycle{opacity:0;transition-delay:calc(var(--move)*.375)}
-.g-runner{color:var(--ink);opacity:0;transition-delay:calc(var(--move)*.375)}
-.disc.att .g-runner{opacity:1;transition-delay:calc(var(--move)*.56)}
-
-/* runner: SMIL run cycle in the SVG (limbs + body bob); far-side limbs recede */
+/* the solid recycle mark and pines read heavier than the stick runner, so they sit a little smaller */
+.glyph.g-recycle,.glyph.g-tree{width:70cqh;height:70cqh;margin:-35cqh 0 0 -35cqh}
+.g-recycle,.g-tree{color:#fff}
+.g-runner{color:var(--ink)}
 .g-runner .far{opacity:.45}
-
-/* recycle mark: a third of a turn every 2.2 s; its 3-fold symmetry makes each stop look identical.
-   Rotates about the mark's area centroid, not its bounding-box centre. */
+/* recycle mark: a third of a turn every 2.2 s about its area centroid */
 .g-recycle path{transform-box:view-box;transform-origin:102.17px 98.28px}
-.disc:not(.att) .g-recycle path{animation:third 2.2s cubic-bezier(.65,0,.25,1) 1s infinite}
+.g-recycle.on path{animation:third 2.2s cubic-bezier(.65,0,.25,1) 1s infinite}
 @keyframes third{0%{transform:rotate(0)}35%{transform:rotate(120deg)}100%{transform:rotate(120deg)}}
+/* two pines: each sways from the base of its own trunk, out of step with the other */
+.g-tree .pine-back{transform-box:view-box;transform-origin:60px 168px}
+.g-tree .pine-front{transform-box:view-box;transform-origin:130px 176px}
+.g-tree.on .pine-front{animation:sway 3.4s ease-in-out infinite}
+.g-tree.on .pine-back{animation:sway 3.4s ease-in-out -1.1s infinite}
+@keyframes sway{0%,100%{transform:rotate(-2.5deg)}50%{transform:rotate(2.5deg)}}
 
 /* number panels: the 2/5 the disc leaves free */
 .panel{position:absolute;top:0;bottom:0;width:40cqw;display:flex;align-items:center;padding:0 clamp(20px,2.4cqw,56px);z-index:2;visibility:hidden}
-.panel.kg{right:0}
-.panel.att{left:0}
+.panel.kg,.panel.co2{right:0}.panel.att{left:0}
 .panel.in{visibility:visible;animation:panelIn .5s cubic-bezier(.2,.8,.2,1) both}
 .panel.out{visibility:visible;animation:panelOut .2s ease-in both}
 @keyframes panelIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @keyframes panelOut{from{opacity:1}to{opacity:0}}
-.main{width:100%;display:flex;flex-direction:column;gap:clamp(12px,2.2cqh,26px);min-width:0}
-.kicker{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .kicker h2{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(26px,5.4cqh,54px);letter-spacing:.04em;text-transform:uppercase;line-height:1}
 .delta{font-family:var(--display);font-weight:800;font-size:clamp(18px,3.6cqh,34px);padding:2px 14px;border-radius:999px;opacity:0}
 .panel.kg .delta{background:#E3F4EA;color:var(--green)}
 .panel.att .delta{background:#FFF1D6;color:var(--amber-ink)}
+.panel.co2 .delta{background:#E1EEF9;color:var(--blue-ink)}
 .delta.show-a{animation:deltaA 2.6s ease-out both}.delta.show-b{animation:deltaB 2.6s ease-out both}
 @keyframes deltaA{0%{opacity:0;transform:translateY(8px)}12%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0}}
 @keyframes deltaB{0%{opacity:0;transform:translateY(8px)}12%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0}}
 
 .digits{display:flex;align-items:flex-end;gap:.05em;font-family:var(--display);font-weight:800}
-.panel.kg .digits{font-size:min(10.2cqw,30cqh,240px)}.panel.kg .digits.wide{font-size:min(8.2cqw,26cqh,196px)}
+.panel.kg .digits,.panel.co2 .digits{font-size:min(10.2cqw,30cqh,240px)}.panel.kg .digits.wide,.panel.co2 .digits.wide{font-size:min(8.2cqw,26cqh,196px)}
 .panel.att .digits{font-size:min(11.5cqw,36cqh,260px)}.panel.att .digits.wide{font-size:min(9.2cqw,30cqh,214px)}
-.unit{font-family:var(--display);font-weight:800;font-size:.26em;margin:0 0 .06em .08em;color:var(--ink);line-height:1}
+.unit{font-family:var(--display);font-weight:800;font-size:.26em;margin:0 0 .06em .08em;color:var(--ink);line-height:1;white-space:nowrap}
 .dot{width:.12em;height:.12em;border-radius:50%;background:var(--green);margin:0 .03em .02em}
 
 /* split-flap tile */
 .flap{position:relative;width:.68em;height:1.06em;perspective:4em;color:#fff;flex-shrink:0}
 .flap.small{font-size:.72em}
-.panel.kg .flap{color:#7BE3AE}
-.panel.att .flap{color:#FFB224}
+.panel.kg .flap{color:#7BE3AE}.panel.att .flap{color:#FFB224}.panel.co2 .flap{color:#8CC8F5}
 .half{position:absolute;left:0;right:0;height:50%;overflow:hidden;background:var(--tile);backface-visibility:hidden}
-.half span{position:absolute;left:0;right:0;height:1.06em;line-height:1.06em;text-align:center;margin-top:-.035em}
+/* direct children only: each half holds one span */
+.half > span{position:absolute;left:0;right:0;height:1.06em;line-height:1.06em;text-align:center;margin-top:-.035em}
 .top,.top-flip{top:0;border-radius:.06em .06em 0 0;background:var(--tile-top)}
 .bottom,.bottom-flip{bottom:0;border-radius:0 0 .06em .06em}
-.bottom span,.bottom-flip span{top:-100%}
-.top span,.top-flip span{top:0}
+.bottom > span,.bottom-flip > span{top:-100%}
+.top > span,.top-flip > span{top:0}
 .top-flip{transform-origin:50% 100%;z-index:2;opacity:0}
 .bottom-flip{transform-origin:50% 0;z-index:2}
 .flap::after{content:"";position:absolute;left:0;right:0;top:50%;height:.012em;margin-top:-.006em;background:var(--seam);z-index:3}
@@ -109,81 +107,88 @@ html,body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--b
 @keyframes botA{from{transform:rotateX(90deg)}to{transform:rotateX(0)}}
 @keyframes botB{from{transform:rotateX(90deg)}to{transform:rotateX(0)}}
 
-/* target */
-.goal{display:flex;flex-direction:column;gap:10px}
-.goal-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-weight:600;font-size:clamp(15px,3.2cqh,28px);color:var(--ink-2)}
-.goal-row b{font-family:var(--display);font-weight:800;font-size:1.25em;letter-spacing:.02em}
-.panel.kg .goal-row b{color:var(--green)}.panel.att .goal-row b{color:var(--amber-ink)}
-.bar{height:clamp(12px,1.9cqh,18px);border-radius:999px;background:#1A2D24;overflow:hidden}
-.bar i{display:block;height:100%;border-radius:999px;transition:width 1.2s cubic-bezier(.22,1,.36,1)}
-.panel.kg .bar i{background:var(--green-fill)}.panel.att .bar i{background:var(--amber)}
-.tabs{display:flex;gap:10px;width:clamp(110px,9vw,180px)}
-.tab{flex:1;height:6px;border-radius:999px;background:var(--track);overflow:hidden}
 .tab i{display:block;height:100%;width:0;border-radius:999px;background:var(--ink)}
-.tab.on i{animation:fill var(--scene-ms) linear both}
-@keyframes fill{from{width:0}to{width:100%}}
+.tab.on-a i{animation:fillA linear both}.tab.on-b i{animation:fillB linear both}
+@keyframes fillA{from{width:0}to{width:100%}}
+@keyframes fillB{from{width:0}to{width:100%}}
 
-/* latest weighings live inside the weight panel */
-.feed{display:flex;flex-direction:column;border-top:1px solid var(--line);margin-top:4px}
-.feed h3{margin:12px 0 4px;font-size:clamp(12px,2cqh,16px);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2)}
-.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:14px;padding:8px 0;border-bottom:1px solid #E6ECE8}
-.row .when{font-variant-numeric:tabular-nums;color:var(--ink-2);font-weight:600;font-size:clamp(13px,2.2cqh,19px)}
-.row .kgv{font-family:var(--display);font-weight:800;font-size:clamp(20px,3.6cqh,32px);font-variant-numeric:tabular-nums;line-height:1}
-.row .rp{font-family:var(--display);font-weight:800;font-size:clamp(16px,2.8cqh,26px);color:var(--amber-ink);font-variant-numeric:tabular-nums;min-width:7.5ch;text-align:right;line-height:1}
-.chip{justify-self:start;display:inline-block;padding:3px 9px;border-radius:6px;font-weight:700;font-size:clamp(11px,1.8cqh,15px);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
-.g-plastik{background:#E2EEFF;color:#0A4AA3}.g-kertas{background:#FFF0D3;color:#7A4100}.g-logam{background:#E8ECEF;color:#323E46}.g-kaca{background:#DAF4EE;color:#0A6152}.g-lain{background:#F1E7FF;color:#5E2A9C}
+/* Kito the mascot: pops up from the bottom on the disc side, waves, says one line, ducks away.
+   Its resting state is visible, so it still shows where animations are paused. */
+.mascot{position:absolute;bottom:0;z-index:4;display:flex;align-items:flex-end;gap:clamp(8px,1cqw,16px);pointer-events:none;transform:translateY(115%)}
+.mascot.left{left:clamp(16px,2.4cqw,48px)}
+.mascot.right{right:clamp(16px,2.4cqw,48px);flex-direction:row-reverse}
+.mascot.show{transform:none;animation:kitoIn .7s cubic-bezier(.34,1.56,.64,1) both}
+.mascot.hide{transform:translateY(115%);animation:kitoOut .4s ease-in both}
+@keyframes kitoIn{from{transform:translateY(115%)}to{transform:none}}
+@keyframes kitoOut{from{transform:none}to{transform:translateY(115%)}}
+.kito{height:30cqh;width:auto;display:block;overflow:visible}
+.mascot.show .kito{animation:hop .42s ease-in-out .7s 4 alternate}
+@keyframes hop{from{transform:none}to{transform:translateY(-1.6cqh)}}
+.kito .flip{transform-box:view-box;transform-origin:80px 100px}
+.mascot.left .kito .flip{transform:scaleX(-1)}
+.kito .arm-wave{transform-box:view-box;transform-origin:44px 112px}
+.mascot.show .kito .arm-wave{animation:wave .5s ease-in-out .5s 6 alternate}
+@keyframes wave{from{transform:rotate(-12deg)}to{transform:rotate(20deg)}}
+.kito .eyes{transform-box:view-box;transform-origin:80px 103px;animation:blink 3.6s infinite}
+@keyframes blink{0%,92%,100%{transform:none}95%{transform:scaleY(.1)}}
+.bubble{position:relative;margin-bottom:17cqh;max-width:30cqw;padding:clamp(10px,1.8cqh,20px) clamp(14px,1.6cqw,26px);border-radius:20px;background:#FFFFFF;color:#0D1B14;box-shadow:0 6px 0 rgba(13,27,20,.14);font-family:var(--display);font-weight:800;font-size:clamp(18px,4.2cqh,40px);line-height:1.1;opacity:0}
+.bubble .who{display:block;font-family:var(--body);font-size:.42em;letter-spacing:.16em;text-transform:uppercase;color:var(--green);margin-bottom:4px}
+.bubble::after{content:"";position:absolute;bottom:16px;width:22px;height:22px;background:#FFFFFF;transform:rotate(45deg)}
+.mascot.left .bubble::after{left:-9px}.mascot.right .bubble::after{right:-9px}
+.mascot.left .bubble{transform-origin:0 100%}.mascot.right .bubble{transform-origin:100% 100%}
+.mascot.show .bubble{opacity:1;animation:bubbleIn .45s .35s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes bubbleIn{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:none}}
 
-/* footer */
-.foot{background:#064D2F;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:clamp(10px,.9vw,18px) var(--gut);font-weight:600;font-size:clamp(13px,.95vw,19px);position:relative;z-index:3}
-.foot .slogan{font-family:var(--display);font-weight:800;font-size:1.35em;letter-spacing:.06em;text-transform:uppercase;color:#FFD27A}
-.steps{display:flex;gap:clamp(12px,1.4vw,28px);align-items:center}
-.steps span{display:flex;align-items:center;gap:8px}
-.steps b{display:inline-grid;place-items:center;width:1.6em;height:1.6em;border-radius:50%;background:#fff;color:#064D2F;font-weight:800}
-
-/* narrow screens: disc sits on top, no travel; panels stack beneath */
+/* narrow screens: disc sits on top without travelling; panels stack beneath */
 @media (max-width:760px){
-  .board{height:auto;min-height:100vh}
+  .fr{height:auto !important;min-height:100vh}
   .stage{height:auto;container-type:inline-size;display:flex;flex-direction:column;align-items:center;padding:16px 16px 24px}
   .disc,.disc.right{position:relative;top:auto;margin:0 0 20px;width:62vw;height:62vw;transform:none}
-  .title{font-size:min(9vw,40px)}
-  .meta{align-items:flex-start}
-  .clock{font-size:36px}
-  .over{font-size:12px}
+  .fr-title{font-size:min(9vw,40px) !important}
+  .fr-meta{align-items:flex-start !important}
+  .fr-clock{font-size:36px !important}
+  .fr-logos > img:first-child{height:48px !important}
+  .fr-logos > img:last-child{height:34px !important}
+  .fr-rule{display:none !important}
+  .mascot{display:none !important}
   .glyph{width:46%;height:46%;margin:-23% 0 0 -23%}
-  .disc.right .g-recycle{transform:none}
   .panel{position:relative;width:100%;padding:0;display:none}
   .panel.in{display:flex}
-  .panel .digits,.panel.kg .digits,.panel.att .digits{font-size:min(16vw,110px)}.panel .digits.wide{font-size:min(13vw,90px)}
+  .panel .digits,.panel.kg .digits,.panel.att .digits,.panel.co2 .digits{font-size:min(16vw,110px)}.panel .digits.wide{font-size:min(13vw,90px)}
   .kicker h2{font-size:30px}
-  .main{gap:14px}
-  .goal-row{font-size:15px}
-  .row{grid-template-columns:minmax(0,1fr) auto auto}.row .when{display:none}
-  .steps,.foot .where{display:none}
-  .foot{justify-content:center}
+  .fr-stats{grid-template-columns:minmax(0,1fr) !important}
+  .fr-steps,.fr-where{display:none !important}
+  .fr-foot{justify-content:center !important}
 }
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.panel.in{opacity:1}}
+@media (prefers-reduced-motion:reduce){.fr *{animation:none !important;transition:none !important}.panel.in{opacity:1}}
 </style>
 </head>
 <body>
-<div class="board">
-  <header class="head">
-    <div>
-      <div class="over">KITARecycle × SWM Environment</div>
-      <h1 class="title">[Nama Acara] Fun Run</h1>
+<div class="fr" style="height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; background: #F3F6F2; color: #0D1B14; font-family: 'Hanken Grotesk', system-ui, sans-serif">
+
+  <header style="display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; padding: clamp(14px, 1.6vw, 32px) clamp(16px, 2.2vw, 44px) clamp(16px, 1.6vw, 32px); position: relative; z-index: 3; background: #F3F6F2">
+    <div style="display: flex; align-items: center; gap: clamp(14px, 1.6vw, 32px); flex-wrap: wrap">
+      <div class="fr-logos" style="display: flex; align-items: center; gap: clamp(10px, 1vw, 20px)">
+        <img src="/logos/mbjb.png" alt="Logo Majlis Bandaraya Johor Bahru" style="height: clamp(56px, 6vw, 120px); width: auto; display: block">
+        <img src="/logos/utm.png" alt="Logo Universiti Teknologi Malaysia" style="height: clamp(44px, 4.6vw, 92px); width: auto; display: block">
+      </div>
+      <div class="fr-rule" aria-hidden="true" style="width: 2px; align-self: stretch; background: #DCE4DE"></div>
+      <div>
+        <h1 class="fr-title" id="title" style="margin: 0; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 800; font-size: clamp(40px, 4.8vw, 96px); line-height: 0.92; text-transform: uppercase; letter-spacing: 0.01em">JB NEON X UTM</h1>
+      </div>
     </div>
-    <div class="meta">
-      <div class="date" id="date"></div>
-      <div class="clock" id="clock">00:00<small>MYT</small></div>
+    <div class="fr-meta" style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">
+      <div id="date" style="font-weight: 700; font-size: clamp(14px, 1.3vw, 26px); letter-spacing: 0.18em; text-transform: uppercase; color: #0B7A4B"></div>
+      <div class="fr-clock" style="font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: clamp(40px, 4.2vw, 84px); line-height: 1; font-variant-numeric: tabular-nums"><span id="clock">00:00</span><span style="font-family: 'Hanken Grotesk', system-ui, sans-serif; font-weight: 600; font-size: 0.3em; letter-spacing: 0.12em; color: #44554C; margin-left: 0.3em">MYT</span></div>
     </div>
   </header>
 
   <main class="stage">
     <div class="disc" id="disc" aria-hidden="true">
-      <div class="fill green"><div class="lanes"><i></i><i></i><i></i></div></div>
-      <div class="fill amber"><div class="lanes"><i></i><i></i><i></i></div></div>
-      <div class="gbox">
-      <div class="glyph g-recycle">
-        <!-- universal recycling symbol (outline from Noto Sans Symbols, SIL OFL) -->
+      <div class="fill green on" id="fill0"><div class="lanes"><i></i><i></i><i></i></div></div>
+      <div class="fill amber" id="fill1"><div class="lanes"><i></i><i></i><i></i></div></div>
+      <div class="fill blue" id="fill2"><div class="lanes"><i></i><i></i><i></i></div></div>
+      <div class="glyph g-recycle on">
         <svg viewBox="0 0 200 200"><path fill="currentColor" d="M59.1 171.7Q52.4 171.7 46.4 167.8Q40.4 163.9 36.7 157.8L18.3 125.4Q16.3 122 15.3 118.4Q14.3 114.8 14.3 111.1Q14.3 104.6 17.4 99.3L31.7 74.3L63 93.5L36.5 140.2L33.3 135.2H96.1V171.7ZM71.1 113.7 10 78.5 14.8 70.4 54.1 72.8 75.7 105.7ZM121.5 188.7 103.9 153.5 121.5 118.3H130.9V188.7ZM145.4 171.7H116.5V135.2H171.3L168.3 140.9L137 86.1L168.7 67.4L187 99.6Q190 105 190 111.3Q190 118.9 186.1 125.4L167.4 158Q163.9 164.1 158 167.9Q152.2 171.7 145.4 171.7ZM74.1 74.1 42.2 55.9 60.4 23.7Q63.7 17.8 70 14.6Q76.3 11.3 83.5 11.3H120.9Q128 11.3 134.2 14.6Q140.4 17.8 143.9 23.7L158 48.7L125.9 66.3L99.1 19.6H105.2ZM109.6 70.9 104.8 62.8 165.9 27.6 170.4 35.7 148.7 68.5Z"></path></svg>
       </div>
       <div class="glyph g-runner">
@@ -191,7 +196,6 @@ html,body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--b
           <g transform="translate(-9 0)">
             <g class="runner">
               <animateTransform attributeName="transform" type="translate" dur="0.66s" repeatCount="indefinite" values="0 1.00;0 2.78;0 4.33;0 5.00;0 4.33;0 2.78;0 1.00;0 -1.30;0 -3.81;0 -5.00;0 -3.81;0 -1.30;0 1.00;0 2.78;0 4.33;0 5.00;0 4.33;0 2.78;0 1.00;0 -1.30;0 -3.81;0 -5.00;0 -3.81;0 -1.30;0 1.00"></animateTransform>
-              <!-- run cycle generated from joint angles (contact, down, passing, up, air); far-side limbs drawn lighter -->
               <path class="far" d="M116.0 72.0L137.4 94.4L153.9 73.1"><animate attributeName="d" dur="0.66s" repeatCount="indefinite" values="M116.0 72.0L137.4 94.4L153.9 73.1;M116.0 72.0L134.6 96.8L153.9 77.8;M116.0 72.0L129.5 99.9L152.5 85.7;M116.0 72.0L123.4 102.1L149.1 93.8;M116.0 72.0L116.5 103.0L143.4 101.6;M116.0 72.0L109.0 102.2L135.3 108.3;M116.0 72.0L102.8 100.0L126.8 112.3;M116.0 72.0L98.0 97.2L118.9 114.2;M116.0 72.0L94.4 94.3L112.2 114.6;M116.0 72.0L93.0 92.7L109.1 114.4;M116.0 72.0L93.7 93.6L110.8 114.5;M116.0 72.0L96.4 96.0L116.1 114.5;M116.0 72.0L99.5 98.2L121.6 113.7;M116.0 72.0L102.2 99.8L126.0 112.6;M116.0 72.0L105.2 101.1L130.4 110.9;M116.0 72.0L108.6 102.1L134.8 108.6;M116.0 72.0L112.5 102.8L139.3 105.4;M116.0 72.0L116.6 103.0L143.6 101.4;M116.0 72.0L121.0 102.6L147.3 96.7;M116.0 72.0L125.6 101.5L150.5 91.0;M116.0 72.0L130.2 99.6L152.7 84.8;M116.0 72.0L133.6 97.5L153.7 79.6;M116.0 72.0L136.0 95.7L154.0 75.5;M116.0 72.0L137.6 94.3L153.9 72.8;M116.0 72.0L137.4 94.4L153.9 73.1"></animate></path>
               <path class="far" d="M102.0 116.0L81.1 142.8L47.1 141.0"><animate attributeName="d" dur="0.66s" repeatCount="indefinite" values="M102.0 116.0L81.1 142.8L47.1 141.0;M102.0 116.0L83.9 144.8L51.1 136.0;M102.0 116.0L89.0 147.4L57.8 133.8;M102.0 116.0L94.9 149.3L64.6 133.8;M102.0 116.0L101.6 150.0L70.7 135.8;M102.0 116.0L108.7 149.3L76.2 139.4;M102.0 116.0L114.7 147.5L80.8 145.7;M102.0 116.0L119.5 145.2L87.8 157.5;M102.0 116.0L123.1 142.7L102.1 169.4;M102.0 116.0L124.8 141.3L117.1 174.4;M102.0 116.0L123.8 142.1L126.1 176.0;M102.0 116.0L121.0 144.2L130.0 177.0;M102.0 116.0L118.0 146.0L128.5 178.4;M102.0 116.0L115.3 147.3L119.3 181.1;M102.0 116.0L112.3 148.4L104.8 181.5;M102.0 116.0L109.1 149.3L93.1 179.3;M102.0 116.0L105.4 149.8L87.0 178.5;M102.0 116.0L101.4 150.0L83.0 178.6;M102.0 116.0L97.3 149.7L78.8 178.2;M102.0 116.0L92.8 148.7L74.0 177.1;M102.0 116.0L88.4 147.1L69.3 175.3;M102.0 116.0L85.0 145.4L63.1 171.5;M102.0 116.0L82.5 143.9L54.6 163.2;M102.0 116.0L80.9 142.7L47.9 151.0;M102.0 116.0L81.1 142.8L47.1 141.0"></animate></path>
               <circle cx="128" cy="38" r="15" fill="currentColor" stroke="none"></circle>
@@ -202,227 +206,366 @@ html,body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--b
           </g>
         </svg>
       </div>
+      <div class="glyph g-tree">
+        <svg viewBox="0 0 200 200" stroke-linejoin="round">
+          <!-- two overlapping pines: the back one lighter; the front one carries a disc-coloured gap so they stay separate -->
+          <g class="pine-back" fill="currentColor" stroke="currentColor" stroke-width="10" opacity=".55">
+            <path d="M60 40 94 84H26Z"></path><path d="M60 66 102 116H18Z"></path><path d="M60 94 108 150H12Z"></path><rect x="53" y="146" width="14" height="22" rx="2"></rect>
+          </g>
+          <g class="pine-front">
+            <g fill="#1C6FB0" stroke="#1C6FB0" stroke-width="26">
+              <path d="M130 28 170 80H90Z"></path><path d="M130 56 180 118H80Z"></path><path d="M130 88 188 154H72Z"></path><rect x="121" y="150" width="18" height="26" rx="3"></rect>
+            </g>
+            <g fill="currentColor" stroke="currentColor" stroke-width="10">
+              <path d="M130 28 170 80H90Z"></path><path d="M130 56 180 118H80Z"></path><path d="M130 88 188 154H72Z"></path><rect x="121" y="150" width="18" height="26" rx="3"></rect>
+            </g>
+          </g>
+        </svg>
       </div>
     </div>
 
-    <section class="panel kg" aria-label="Berat dikitar semula">
-      <div class="main">
-        <div class="kicker"><h2>Berat dikitar semula</h2><span class="delta" id="kgDelta"></span></div>
-        <div class="digits" id="kgDigits" role="img"></div>
-        <div class="goal">
-          <div class="goal-row"><span>Sasaran <span id="kgGoal"></span> kg</span><b id="kgPct"></b></div>
-          <div class="bar"><i id="kgBar"></i></div>
+    <section class="panel kg in" id="panel0" aria-label="Berat dikitar semula">
+      <div style="width: 100%; display: flex; flex-direction: column; gap: clamp(12px, 2.2cqh, 26px); min-width: 0">
+        <div class="kicker" style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap">
+          <h2>Berat dikitar semula</h2>
+          <span class="delta" id="delta0"></span>
         </div>
-        <div class="tabs" aria-hidden="true"><span class="tab"><i></i></span><span class="tab"><i></i></span></div>
-        <div class="feed"><h3>Timbangan terkini</h3><div id="rows"></div></div>
+        <div class="digits" id="digits0" role="img"><span class="unit">kg</span></div>
+        <div style="display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-weight: 600; font-size: clamp(15px, 3.2cqh, 28px); color: #44554C">
+            <span>Sasaran <span id="kgGoal"></span> kg</span>
+            <b style="font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 1.25em; letter-spacing: 0.02em; color: #0B7A4B"><span id="kgPct">0</span>% terkumpul</b>
+          </div>
+          <div style="height: clamp(12px, 1.9cqh, 18px); border-radius: 999px; background: #1A2D24; overflow: hidden">
+            <i id="kgBar" style="display: block; height: 100%; border-radius: 999px; background: #12A363; width: 0%; transition: width 1.2s cubic-bezier(.22,1,.36,1)"></i>
+          </div>
+        </div>
+        <div class="tabs" aria-hidden="true" style="display: flex; gap: 10px; width: clamp(150px, 12vw, 240px)"></div>
       </div>
     </section>
 
-    <section class="panel att" aria-label="Peserta hadir">
-      <div class="main">
-        <div class="kicker"><h2>Peserta hadir</h2><span class="delta" id="attDelta"></span></div>
-        <div class="digits" id="attDigits" role="img"></div>
-        <div class="goal">
-          <div class="goal-row"><span>Sasaran <span id="attGoal"></span> peserta</span><b id="attPct"></b></div>
-          <div class="bar"><i id="attBar"></i></div>
+    <section class="panel att" id="panel1" aria-label="Peserta hadir">
+      <div style="width: 100%; display: flex; flex-direction: column; gap: clamp(12px, 2.2cqh, 26px); min-width: 0">
+        <div class="kicker" style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap">
+          <h2>Peserta hadir</h2>
+          <span class="delta" id="delta1"></span>
         </div>
-        <div class="tabs" aria-hidden="true"><span class="tab"><i></i></span><span class="tab"><i></i></span></div>
+        <div class="digits" id="digits1" role="img"><span class="unit">orang</span></div>
+        <div style="display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-weight: 600; font-size: clamp(15px, 3.2cqh, 28px); color: #44554C">
+            <span>Sasaran <span id="attGoal"></span> peserta</span>
+            <b style="font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 1.25em; letter-spacing: 0.02em; color: #8F4C00"><span id="attPct">0</span>% dicapai</b>
+          </div>
+          <div style="height: clamp(12px, 1.9cqh, 18px); border-radius: 999px; background: #1A2D24; overflow: hidden">
+            <i id="attBar" style="display: block; height: 100%; border-radius: 999px; background: #F5A20B; width: 0%; transition: width 1.2s cubic-bezier(.22,1,.36,1)"></i>
+          </div>
+        </div>
+        <div class="tabs" aria-hidden="true" style="display: flex; gap: 10px; width: clamp(150px, 12vw, 240px)"></div>
       </div>
     </section>
+
+    <section class="panel co2" id="panel2" aria-label="Carbon Emission Reduction">
+      <div style="width: 100%; display: flex; flex-direction: column; gap: clamp(12px, 2.2cqh, 26px); min-width: 0">
+        <div class="kicker" style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap">
+          <h2>Carbon Emission Reduction</h2>
+          <span class="delta" id="delta2"></span>
+        </div>
+        <div class="digits" id="digits2" role="img"><span class="unit">kg CO₂e</span></div>
+        <div style="display: flex; align-items: center; gap: clamp(12px, 1.2cqw, 20px); padding: clamp(10px, 1.6cqh, 18px) clamp(14px, 1.4cqw, 24px); border-radius: 16px; background: #E1EEF9; color: #14548A">
+          <svg viewBox="0 0 200 200" aria-hidden="true" stroke-linejoin="round" style="width: clamp(40px, 7cqh, 70px); height: clamp(40px, 7cqh, 70px); flex-shrink: 0"><g fill="currentColor" stroke="currentColor" stroke-width="10" opacity=".45"><path d="M60 40 94 84H26Z"></path><path d="M60 66 102 116H18Z"></path><path d="M60 94 108 150H12Z"></path><rect x="53" y="146" width="14" height="22" rx="2"></rect></g><g fill="#E1EEF9" stroke="#E1EEF9" stroke-width="26"><path d="M130 28 170 80H90Z"></path><path d="M130 56 180 118H80Z"></path><path d="M130 88 188 154H72Z"></path><rect x="121" y="150" width="18" height="26" rx="3"></rect></g><g fill="currentColor" stroke="currentColor" stroke-width="10"><path d="M130 28 170 80H90Z"></path><path d="M130 56 180 118H80Z"></path><path d="M130 88 188 154H72Z"></path><rect x="121" y="150" width="18" height="26" rx="3"></rect></g></svg>
+          <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 800; font-size: clamp(24px, 5.2cqh, 52px); line-height: 1">
+            <span style="font-size: 0.62em; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase">Setara</span>
+            <span id="trees" style="font-variant-numeric: tabular-nums">0</span>
+            <span style="font-size: 0.62em; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase">pokok ditanam</span>
+          </div>
+        </div>
+        <div class="fr-stats" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(10px, 1cqw, 18px)">
+          <div style="padding: clamp(10px, 1.6cqh, 18px) clamp(12px, 1.2cqw, 20px); border-radius: 14px; background: #FFFFFF; border: 1px solid #DCE4DE">
+            <div style="font-size: clamp(12px, 2cqh, 16px); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #44554C">Sisa dikitar semula</div>
+            <div style="margin-top: 4px; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 800; font-size: clamp(24px, 5cqh, 48px); line-height: 1; font-variant-numeric: tabular-nums; color: #0B7A4B"><span id="kgText">0.0</span> kg</div>
+          </div>
+          <div style="padding: clamp(10px, 1.6cqh, 18px) clamp(12px, 1.2cqw, 20px); border-radius: 14px; background: #FFFFFF; border: 1px solid #DCE4DE">
+            <div style="font-size: clamp(12px, 2cqh, 16px); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #44554C">Peserta</div>
+            <div style="margin-top: 4px; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 800; font-size: clamp(24px, 5cqh, 48px); line-height: 1; font-variant-numeric: tabular-nums; color: #8F4C00"><span id="attText">0</span> orang</div>
+          </div>
+        </div>
+        <div class="tabs" aria-hidden="true" style="display: flex; gap: 10px; width: clamp(150px, 12vw, 240px)"></div>
+        <p style="margin: 0; font-size: clamp(11px, 1.8cqh, 15px); line-height: 1.4; color: #44554C">Anggaran: <span id="co2Factor">3.12</span> kg CO₂e dielak bagi setiap kg bahan kitar semula campuran berbanding tapak pelupusan (EPA WARM). 1 pokok ≈ <span id="treeFactor">60.6</span> kg CO₂ (EPA, anak pokok bandar ditanam 10 tahun).</p>
+      </div>
+    </section>
+
+    <div class="mascot left" id="mascot" aria-live="polite">
+      <svg class="kito" viewBox="0 0 160 200" aria-hidden="true">
+        <ellipse cx="80" cy="195" rx="46" ry="5" fill="#0D1B14" opacity=".18"></ellipse>
+        <g class="flip">
+          <path d="M66 172v12M94 172v12" stroke="#0D1B14" stroke-width="7" stroke-linecap="round"></path>
+          <rect x="50" y="181" width="28" height="12" rx="6" fill="#F5A20B"></rect>
+          <rect x="84" y="181" width="28" height="12" rx="6" fill="#F5A20B"></rect>
+          <rect x="50" y="189" width="28" height="4" rx="2" fill="#FFFFFF"></rect>
+          <rect x="84" y="189" width="28" height="4" rx="2" fill="#FFFFFF"></rect>
+          <path d="M116 112Q134 122 122 140" stroke="#0D1B14" stroke-width="7" fill="none" stroke-linecap="round"></path>
+          <path d="M40 70H120L112 166Q111 174 103 174H57Q49 174 48 166Z" fill="#12A363" stroke="#FFFFFF" stroke-width="4" stroke-linejoin="round"></path>
+          <rect x="38" y="72" width="84" height="10" fill="#F5A20B"></rect>
+          <path d="M66 58Q80 42 94 58" stroke="#0B7A4B" stroke-width="7" fill="none" stroke-linecap="round"></path>
+          <rect x="32" y="56" width="96" height="18" rx="9" fill="#0B7A4B" stroke="#FFFFFF" stroke-width="4"></rect>
+          <g class="eyes">
+            <ellipse cx="66" cy="103" rx="9" ry="11" fill="#FFFFFF"></ellipse>
+            <ellipse cx="94" cy="103" rx="9" ry="11" fill="#FFFFFF"></ellipse>
+            <circle cx="69" cy="105" r="5" fill="#0D1B14"></circle>
+            <circle cx="97" cy="105" r="5" fill="#0D1B14"></circle>
+          </g>
+          <circle cx="56" cy="120" r="5" fill="#FF8FA3" opacity=".75"></circle>
+          <circle cx="104" cy="120" r="5" fill="#FF8FA3" opacity=".75"></circle>
+          <path d="M68 119Q80 132 92 119" stroke="#0D1B14" stroke-width="4" fill="none" stroke-linecap="round"></path>
+          <g class="arm-wave">
+            <path d="M44 112 22 86" stroke="#0D1B14" stroke-width="7" stroke-linecap="round"></path>
+            <circle cx="20" cy="83" r="8" fill="#12A363" stroke="#FFFFFF" stroke-width="3"></circle>
+          </g>
+        </g>
+        <g transform="translate(68 136) scale(.12)"><path fill="#FFFFFF" d="M59.1 171.7Q52.4 171.7 46.4 167.8Q40.4 163.9 36.7 157.8L18.3 125.4Q16.3 122 15.3 118.4Q14.3 114.8 14.3 111.1Q14.3 104.6 17.4 99.3L31.7 74.3L63 93.5L36.5 140.2L33.3 135.2H96.1V171.7ZM71.1 113.7 10 78.5 14.8 70.4 54.1 72.8 75.7 105.7ZM121.5 188.7 103.9 153.5 121.5 118.3H130.9V188.7ZM145.4 171.7H116.5V135.2H171.3L168.3 140.9L137 86.1L168.7 67.4L187 99.6Q190 105 190 111.3Q190 118.9 186.1 125.4L167.4 158Q163.9 164.1 158 167.9Q152.2 171.7 145.4 171.7ZM74.1 74.1 42.2 55.9 60.4 23.7Q63.7 17.8 70 14.6Q76.3 11.3 83.5 11.3H120.9Q128 11.3 134.2 14.6Q140.4 17.8 143.9 23.7L158 48.7L125.9 66.3L99.1 19.6H105.2ZM109.6 70.9 104.8 62.8 165.9 27.6 170.4 35.7 148.7 68.5Z"></path></g>
+      </svg>
+      <div class="bubble"><b class="who">Kito</b><span id="mascotMsg"></span></div>
+    </div>
   </main>
 
-  <footer class="foot">
-    <span class="slogan">Jom kitar semula sambil berlari!</span>
-    <span class="steps"><span><b>1</b>Imbas QR KITARecycle</span><span><b>2</b>Imbas kad kategori</span><span><b>3</b>Timbang &amp; dapat mata</span></span>
-    <span class="where">[LOKASI]</span>
+  <footer class="fr-foot" style="background: #064D2F; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: clamp(10px, 0.9vw, 18px) clamp(16px, 2.2vw, 44px); font-weight: 600; font-size: clamp(13px, 0.95vw, 19px); position: relative; z-index: 3">
+    <span style="font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 1.35em; letter-spacing: 0.06em; text-transform: uppercase; color: #FFD27A">Jom kitar semula sambil berlari!</span>
+    <span class="fr-steps" style="display: flex; gap: clamp(12px, 1.4vw, 28px); align-items: center">
+      <span style="display: flex; align-items: center; gap: 8px"><b style="display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; border-radius: 50%; background: #FFFFFF; color: #064D2F; font-weight: 800">1</b>Imbas QR KITARecycle</span>
+      <span style="display: flex; align-items: center; gap: 8px"><b style="display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; border-radius: 50%; background: #FFFFFF; color: #064D2F; font-weight: 800">2</b>Imbas kad kategori</span>
+      <span style="display: flex; align-items: center; gap: 8px"><b style="display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; border-radius: 50%; background: #FFFFFF; color: #064D2F; font-weight: 800">3</b>Timbang &amp; dapat mata</span>
+    </span>
+    <span class="fr-where" id="where">[LOKASI]</span>
   </footer>
 </div>
 
 <script>
-// ---- Config (targets are placeholders until the event team confirms) ----
-// Settings from the URL, so the board can be set up on the day without a redeploy:
-//   ?acara=UTM&lokasi=Dataran%20UTM&sasaranKg=500&sasaranPeserta=1000&dari=2026-10-25T07:00
-//   dari  = count weighings from this Malaysia time (default: midnight today)
-//   demo=1 = random data, for rehearsing without the scale
+(() => {
 const qs = new URLSearchParams(location.search);
-const CONFIG = {
-  targetPeserta: Number(qs.get('sasaranPeserta')) || 1000, targetKg: Number(qs.get('sasaranKg')) || 500,
-  sceneMs: 5000, moveMs: 800, simulate: qs.get('demo') === '1', intervalMs: 3500, feedRows: 3, pollMs: 3000,
+const num = (k, d) => (qs.has(k) && qs.get(k) !== '' && !isNaN(Number(qs.get(k))) ? Number(qs.get(k)) : d);
+const P = {
+  sceneMs: num('saat', 5) * 1000,
+  targetKg: num('sasaranKg', 500),
+  targetPeserta: num('sasaranPeserta', 1000),
+  // US EPA: recycling mixed recyclables instead of landfilling avoids 2.83 t CO2e per short ton
+  // (= 3.12 kg/kg); one urban tree seedling grown for 10 years sequesters about 60.6 kg CO2.
+  co2PerKg: num('co2PerKg', 3.12),
+  co2PerTree: num('co2PerTree', 60.6),
+  mascotEvery: num('kito', 4),
+  demo: qs.get('demo') === '1',
+  pollMs: 3000,
 };
+const MOVE = 800;
+const $ = (id) => document.getElementById(id);
+const pad2 = (n) => String(n).padStart(2, '0');
+const co2For = (kg) => Math.round(kg * P.co2PerKg);
+const timeouts = [];
+const later = (fn, ms) => timeouts.push(setTimeout(fn, ms));
 
-// SWM "Jenis Barangan dan RP KITARecycle" rates (RP per kg).
-const ITEMS = [
-  ['Botol Plastik','plastik',3],['Plastik Campur','plastik',10],['Plastik Keras','plastik',2.5],
-  ['Kadbod','kertas',8],['Surat Khabar','kertas',7],['Kertas Campur','kertas',4.4],
-  ['Tin Aluminium','logam',60],['Tin Besi','logam',2],['Botol Kaca','kaca',1.5],['Tetra Pak','lain',1.5]
-];
+if (qs.get('acara')) $('title').textContent = qs.get('acara');
+if (qs.get('lokasi')) $('where').textContent = qs.get('lokasi');
+$('kgGoal').textContent = P.targetKg.toLocaleString('en-MY');
+$('attGoal').textContent = P.targetPeserta.toLocaleString('en-MY');
+$('co2Factor').textContent = P.co2PerKg.toFixed(2);
+$('treeFactor').textContent = P.co2PerTree.toFixed(1);
 
-const $ = id => document.getElementById(id);
-const pad2 = n => String(n).padStart(2,'0');
-const hhmm = d => pad2(d.getHours())+':'+pad2(d.getMinutes());
-document.documentElement.style.setProperty('--scene-ms', CONFIG.sceneMs+'ms');
-document.documentElement.style.setProperty('--move', CONFIG.moveMs+'ms');
-
-// ---- split-flap counter: starts at minInt tiles, adds a tile only when the number needs it ----
-function makeCounter(el, minInt, decimals, unit){
-  const tiles = [];
-  let intCount = 0;
-  const newTile = (small) => {
-    const f = document.createElement('div');
-    f.className = 'flap' + (small ? ' small' : '');
-    f.innerHTML = '<div class="half top"><span></span></div><div class="half bottom"><span></span></div><div class="half top-flip"><span></span></div><div class="half bottom-flip"><span></span></div>';
-    return {el:f, val:'', flips:0};
-  };
-  const growTo = (n) => {
-    while (intCount < n){ const t = newTile(false); el.insertBefore(t.el, el.firstChild); tiles.unshift(t); intCount++; }
-    el.classList.toggle('wide', intCount > minInt);
-  };
-  growTo(minInt);
-  if (decimals){ const d=document.createElement('div'); d.className='dot'; el.appendChild(d); for(let i=0;i<decimals;i++){ const t=newTile(true); el.appendChild(t.el); tiles.push(t); } }
-  if (unit){ const u=document.createElement('span'); u.className='unit'; u.textContent=unit; el.appendChild(u); }
-  const chars = (value) => {
-    growTo(Math.max(minInt, String(Math.floor(value)).length));
-    return value.toFixed(decimals).replace('.','').padStart(intCount+decimals,'0').split('');
-  };
-  const flip = (t, from, to, delay) => {
-    const q = sel => t.el.querySelector(sel+' span');
-    q('.top').textContent = to; q('.bottom').textContent = from;
-    q('.top-flip').textContent = from; q('.bottom-flip').textContent = to;
-    t.el.querySelector('.top-flip').style.animationDelay = delay+'ms';
-    t.el.querySelector('.bottom-flip').style.animationDelay = (delay+240)+'ms';
-    t.flips++; t.el.classList.remove('go-a','go-b'); void t.el.offsetWidth; t.el.classList.add(t.flips%2?'go-a':'go-b');
-    t.val = to;
-  };
-  let last = 0;
-  return {
-    set(value, quiet){
-      last = value;
-      const s = chars(value);
-      tiles.forEach((t,i)=>{
-        if (s[i]===t.val) return;
-        if (quiet){ t.el.querySelectorAll('span').forEach(sp=>sp.textContent=s[i]); t.val=s[i]; return; }
-        flip(t, t.val, s[i], 0);
-      });
-      el.setAttribute('aria-label', value.toFixed(decimals)+(unit?' '+unit:''));
-    },
-    entrance(){ const s = chars(last); tiles.forEach((t,i)=>flip(t, '', s[i], i*40)); }
-  };
+// ---- split-flap counters: start at minInt tiles, grow only when the number needs it ----
+function makeCounter(el, minInt, decimals, withDot, label) {
+  return { el, minInt, decimals, withDot, label, intCount: 0, tiles: [], last: 0 };
+}
+const newTile = (small) => ({ small, val: '', from: '', flips: 0, delay: 0, node: null });
+function chars(c, value) {
+  const need = Math.max(c.minInt, String(Math.floor(value)).length);
+  while (c.intCount < need) { c.tiles.unshift(newTile(false)); c.intCount++; }
+  if (c.decimals && c.tiles.length === c.intCount) for (let i = 0; i < c.decimals; i++) c.tiles.push(newTile(true));
+  return value.toFixed(c.decimals).replace('.', '').padStart(c.intCount + c.decimals, '0').split('');
+}
+function tileNode() {
+  const d = document.createElement('div');
+  d.innerHTML = '<div class="half top"><span></span></div><div class="half bottom"><span></span></div>' +
+    '<div class="half top-flip"><span></span></div><div class="half bottom-flip"><span></span></div>';
+  return d;
+}
+function render(c) {
+  const unit = c.el.querySelector('.unit');
+  if (c.el.querySelectorAll('.flap').length !== c.tiles.length || c.tiles.some((t) => !t.node)) {
+    [...c.el.children].forEach((n) => { if (n !== unit) n.remove(); });
+    c.tiles.forEach((t, i) => {
+      if (c.withDot && i === c.intCount) { const dot = document.createElement('div'); dot.className = 'dot'; c.el.insertBefore(dot, unit); }
+      t.node = t.node || tileNode();
+      c.el.insertBefore(t.node, unit);
+    });
+  }
+  c.el.classList.toggle('wide', c.intCount > 3);
+  c.el.setAttribute('aria-label', c.label(c.last));
+  c.tiles.forEach((t) => {
+    const [top, bottom, topFlip, bottomFlip] = t.node.children;
+    top.firstChild.textContent = t.val; bottom.firstChild.textContent = t.from;
+    topFlip.firstChild.textContent = t.from; bottomFlip.firstChild.textContent = t.val;
+    topFlip.style.animationDelay = t.delay + 'ms'; bottomFlip.style.animationDelay = (t.delay + 240) + 'ms';
+    t.node.className = 'flap' + (t.small ? ' small' : '') + (t.flips ? (t.flips % 2 ? ' go-a' : ' go-b') : '');
+  });
+}
+// Once a flip has had time to finish, every half shows the new digit.
+function settle(c, ms) { later(() => { c.tiles.forEach((t) => { t.from = t.val; }); render(c); }, ms); }
+function setCounter(c, value, quiet) {
+  c.last = value;
+  const s = chars(c, value);
+  let flipped = false;
+  c.tiles.forEach((t, i) => {
+    if (s[i] === t.val) return;
+    if (quiet) { t.val = s[i]; t.from = s[i]; return; }
+    t.from = t.val; t.val = s[i]; t.flips++; t.delay = 0; flipped = true;
+  });
+  render(c);
+  if (flipped) settle(c, 520);
+}
+function entrance(c) {
+  const s = chars(c, c.last);
+  c.tiles.forEach((t, i) => { t.from = ''; t.val = s[i]; t.flips++; t.delay = i * 40; });
+  render(c);
+  settle(c, c.tiles.length * 40 + 520);
 }
 
-const kgC = makeCounter($('kgDigits'), 3, 1, 'kg');
-const attC = makeCounter($('attDigits'), 3, 0, 'orang');
+const kgC = makeCounter($('digits0'), 3, 1, true, (v) => v.toFixed(1) + ' kilogram dikitar semula');
+const attC = makeCounter($('digits1'), 3, 0, false, (v) => v + ' peserta hadir');
+const co2C = makeCounter($('digits2'), 3, 0, false, (v) => v + ' kilogram CO2 setara dielak');
+const counters = [kgC, attC, co2C];
 
-// ---- state: live boards start at 0 and fill from the first poll; demo starts mid-event ----
-const state = CONFIG.simulate ? { attendance: 472, kg: 353.5 } : { attendance: 0, kg: 0 };
-if (qs.get('acara')) document.querySelector('.title').textContent = qs.get('acara') + ' Fun Run';
-if (qs.get('lokasi')) document.querySelector('.where').textContent = qs.get('lokasi');
-let attPop = 0, kgPop = 0, rowPop = 0;
-
-function renderGoals(){
-  const ap = Math.min(100, state.attendance/CONFIG.targetPeserta*100);
-  const kp = Math.min(100, state.kg/CONFIG.targetKg*100);
-  $('attGoal').textContent = CONFIG.targetPeserta.toLocaleString('en-MY');
-  $('kgGoal').textContent = CONFIG.targetKg.toLocaleString('en-MY');
-  $('attPct').textContent = Math.round(ap)+'% dicapai';
-  $('kgPct').textContent = Math.round(kp)+'% terkumpul';
-  $('attBar').style.width = ap+'%'; $('kgBar').style.width = kp+'%';
+// ---- numbers ----
+const S = { kg: 0, att: 0, pops: [0, 0, 0], scene: 0, inIdx: 0, outIdx: -1, disc: 0, prevDisc: -1, shows: 1, sceneCount: 0, msgIdx: -1 };
+function pop(i, text) {
+  const el = $('delta' + i);
+  S.pops[i]++;
+  el.textContent = text;
+  el.className = 'delta ' + (S.pops[i] % 2 ? 'show-a' : 'show-b');
+}
+function renderNumbers() {
+  const kgPct = Math.min(100, Math.round(S.kg / P.targetKg * 100));
+  const attPct = Math.min(100, Math.round(S.att / P.targetPeserta * 100));
+  $('kgPct').textContent = kgPct; $('kgBar').style.width = kgPct + '%';
+  $('attPct').textContent = attPct; $('attBar').style.width = attPct + '%';
+  $('trees').textContent = Math.round(co2For(S.kg) / P.co2PerTree).toLocaleString('en-MY');
+  $('kgText').textContent = S.kg.toFixed(1);
+  $('attText').textContent = S.att.toLocaleString('en-MY');
+}
+// first = the opening numbers: set without flips or "+x" pops
+function applyStats(att, kg, first) {
+  if (att !== S.att) {
+    const d = att - S.att; S.att = att;
+    setCounter(attC, att, first);
+    if (!first && d > 0) pop(1, '+' + d + ' baru');
+  }
+  if (kg !== S.kg) {
+    const d = kg - S.kg, co2Before = co2For(S.kg); S.kg = kg;
+    setCounter(kgC, kg, first);
+    if (!first && d > 0) pop(0, '+' + d.toFixed(1) + ' kg');
+    const co2After = co2For(kg);
+    setCounter(co2C, co2After, first);
+    if (!first && co2After > co2Before) pop(2, '+' + (co2After - co2Before) + ' kg');
+  }
+  renderNumbers();
 }
 
-function addRow(r, animate){
-  const box = $('rows');
-  const el = document.createElement('div');
-  el.className = 'row';
-  el.innerHTML = '<span class="when">'+r.at+'</span><span class="chip g-'+r.group+'">'+r.item+'</span><span class="kgv">'+r.kg.toFixed(2)+' kg</span><span class="rp">+'+r.rp.toFixed(2)+' RP</span>';
-  box.insertBefore(el, box.firstChild);
-  while (box.children.length > CONFIG.feedRows) box.removeChild(box.lastChild);
-  if (animate && !matchMedia('(prefers-reduced-motion: reduce)').matches)
-    el.animate([{opacity:.3, transform:'translateY(-10px)', background:'#FFF1D6'},{opacity:1, transform:'none', background:'#FFF1D6', offset:.35},{opacity:1, transform:'none', background:'rgba(255,241,214,0)'}], {duration:1600, easing:'ease-out'});
+// ---- scenes: panel leaves, disc moves (or stays) and swaps colour and icon, new panel enters ----
+const tabSets = [...document.querySelectorAll('.tabs')].map((box) => [0, 1, 2].map(() => {
+  const t = document.createElement('span');
+  t.className = 'tab';
+  t.style.cssText = 'flex: 1; height: 6px; border-radius: 999px; background: #D3DDD6; overflow: hidden';
+  const i = document.createElement('i'); i.style.animationDuration = P.sceneMs + 'ms';
+  t.appendChild(i); box.appendChild(t); return t;
+}));
+const PANEL_KIND = ['kg', 'att', 'co2'];
+function renderScene() {
+  $('disc').className = 'disc' + (S.disc === 1 ? ' right' : '');
+  ['green', 'amber', 'blue'].forEach((name, idx) => {
+    $('fill' + idx).className = 'fill ' + name + (S.disc === idx ? ' on' : S.prevDisc === idx ? ' was' : '');
+  });
+  ['g-recycle', 'g-runner', 'g-tree'].forEach((g, idx) => {
+    document.querySelector('.glyph.' + g).classList.toggle('on', S.disc === idx);
+  });
+  PANEL_KIND.forEach((k, idx) => {
+    $('panel' + idx).className = 'panel ' + k + (S.inIdx === idx ? ' in' : '') + (S.outIdx === idx ? ' out' : '');
+  });
+  tabSets.forEach((tabs) => tabs.forEach((t, k) => {
+    t.className = 'tab' + (S.scene === k ? (S.shows % 2 ? ' on-a' : ' on-b') : '');
+  }));
 }
-function flash(el, text, n){ el.textContent = text; el.classList.remove('show-a','show-b'); void el.offsetWidth; el.classList.add(n%2?'show-a':'show-b'); }
-
-function randomDrop(at){
-  const [item, group, rate] = ITEMS[Math.floor(Math.random()*ITEMS.length)];
-  const kg = Math.round((0.4+Math.random()*4.4)*100)/100;
-  return { at: hhmm(at), item, group, kg, rp: Math.round(kg*rate*100)/100 };
-}
-
-// Hook for live data: call applyStats({attendance, kg, drop}) from a poller.
-function applyStats({attendance, kg, drop}){
-  if (attendance!=null && attendance!==state.attendance){ const d=attendance-state.attendance; state.attendance=attendance; attC.set(attendance); if(d>0) flash($('attDelta'),'+'+d+' baru',++attPop); }
-  if (kg!=null && kg!==state.kg){ const d=kg-state.kg; state.kg=kg; kgC.set(kg); if(d>0) flash($('kgDelta'),'+'+d.toFixed(1)+' kg',++kgPop); }
-  if (drop) addRow(drop, true);
-  renderGoals();
-}
-
-// ---- scene rotation: panel leaves, disc rolls across and swaps icon, new panel enters ----
-const disc = $('disc');
-const panels = [document.querySelector('.panel.kg'), document.querySelector('.panel.att')];
-const counters = [kgC, attC];
-const tabSets = [...document.querySelectorAll('.tabs')].map(ts=>[...ts.querySelectorAll('.tab')]);
-let current = -1;
-function show(i){
-  const prev = current >= 0 ? panels[current] : null;
-  current = i;
-  const enter = () => {
-    if (prev) prev.classList.remove('out');
-    const p = panels[i];
-    void p.offsetWidth; p.classList.add('in');
-    counters[i].entrance();
-  };
-  const isAtt = i === 1;
-  tabSets.forEach(tabs=>tabs.forEach((t,k)=>{ t.classList.toggle('on', k===i); const bar=t.querySelector('i'); bar.style.animation='none'; void bar.offsetWidth; bar.style.animation=''; }));
-  if (!prev){ disc.classList.toggle('right', isAtt); disc.classList.toggle('att', isAtt); enter(); return; }
-  prev.classList.remove('in'); prev.classList.add('out');
-  setTimeout(()=>{ disc.classList.toggle('right', isAtt); disc.classList.toggle('att', isAtt); }, 150);
-  setTimeout(enter, 150 + CONFIG.moveMs * 0.7);
+function show(i) {
+  S.scene = i; S.outIdx = S.inIdx; S.inIdx = -1; S.shows++;
+  renderScene();
+  later(() => { S.prevDisc = S.disc; S.disc = i; renderScene(); }, 150);
+  later(() => {
+    entrance(counters[i]);
+    S.outIdx = -1; S.inIdx = i;
+    renderScene();
+    maybeMascot(i);
+  }, 150 + MOVE * 0.7);
 }
 
-// SMIL limb animation ignores CSS, so pause it for reduced-motion viewers
-if (matchMedia('(prefers-reduced-motion: reduce)').matches) document.querySelectorAll('.g-runner svg').forEach(svg=>svg.pauseAnimations());
-
-// ---- boot ----
-kgC.set(state.kg, true); attC.set(state.attendance, true); renderGoals();
-if (CONFIG.simulate){
-  const now = Date.now();
-  for (let i=CONFIG.feedRows-1;i>=0;i--) addRow(randomDrop(new Date(now - i*90000)), false);
+// ---- Kito: every Nth scene pops up on the disc side, says one line, ducks away before the next change ----
+function mascotLines() {
+  const trees = Math.round(co2For(S.kg) / P.co2PerTree);
+  return [
+    'Lari laju, kitar lebih!',
+    'Wah! Kita dah kumpul ' + Math.round(S.kg).toLocaleString('en-MY') + ' kg. Teruskan!',
+    'Setiap botol dikira. Bawa ke kaunter timbang!',
+    trees.toLocaleString('en-MY') + ' pokok! Bumi kata terima kasih.',
+    'Satu langkah untuk sihat, satu beg untuk bumi.',
+    S.att.toLocaleString('en-MY') + ' pelari dah hadir. Hebat semua!',
+    'Bumi kita, tanggungjawab kita!',
+  ];
 }
-function tickClock(){ const d=new Date(); $('clock').innerHTML = pad2(d.getHours())+':'+pad2(d.getMinutes())+'<small>MYT</small>'; $('date').textContent = d.toLocaleDateString('ms-MY',{weekday:'long', day:'numeric', month:'short'}); }
-tickClock(); setInterval(tickClock, 1000);
-show(0);
-setInterval(()=>show((current+1)%panels.length), CONFIG.sceneMs);
+function maybeMascot(i) {
+  if (!P.mascotEvery) return;
+  S.sceneCount++;
+  if (S.sceneCount % P.mascotEvery) return;
+  const lines = mascotLines();
+  S.msgIdx = (S.msgIdx + 1) % lines.length;
+  const side = i === 1 ? 'right' : 'left';
+  $('mascotMsg').textContent = lines[S.msgIdx];
+  $('mascot').className = 'mascot ' + side + ' show';
+  const stay = Math.max(1500, P.sceneMs - (150 + MOVE * 0.7) - 700);
+  later(() => { $('mascot').className = 'mascot ' + side + ' hide'; }, stay);
+  later(() => { $('mascot').className = 'mascot ' + side; }, stay + 400);
+}
 
-// ---- live data from the scale (GET /api/board) ----
-let lastId = null;  // newest weighing already on the board; null until the first poll
-async function poll(){
+// ---- clock ----
+function tickClock() {
+  const d = new Date();
+  $('clock').textContent = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  $('date').textContent = d.toLocaleDateString('ms-MY', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// ---- data: the scale's server, or demo numbers ----
+let loaded = false;
+async function poll() {
   try {
-    const p = new URLSearchParams({ rows: CONFIG.feedRows });
+    const p = new URLSearchParams({ rows: 1 });
     if (qs.get('dari')) p.set('dari', qs.get('dari'));
     const res = await fetch('/api/board?' + p, { cache: 'no-store' });
     if (!res.ok) return;
     const b = await res.json();
-    const rows = b.latest.map(r => ({ at: hhmm(new Date(r.at)), item: r.item, group: r.group, kg: r.kg, rp: r.rp, id: r.id })).reverse();
-    if (lastId === null){
-      // First load: show the current totals without "+x baru" flashes.
-      state.attendance = b.attendance; state.kg = b.kg;
-      attC.set(b.attendance, true); kgC.set(b.kg, true); renderGoals();
-      rows.forEach(r => addRow(r, false));
-    } else {
-      const fresh = rows.filter(r => r.id > lastId);
-      fresh.forEach((r, i) => applyStats({ attendance: i === fresh.length - 1 ? b.attendance : null, kg: i === fresh.length - 1 ? b.kg : null, drop: r }));
-      if (!fresh.length) applyStats({ attendance: b.attendance, kg: b.kg, drop: null });
-    }
-    lastId = Math.max(lastId ?? 0, ...b.latest.map(r => r.id));
+    applyStats(b.attendance, b.kg, !loaded);
+    loaded = true;
   } catch (e) { /* network blip: keep the last numbers, try again next tick */ }
 }
-if (!CONFIG.simulate){ poll(); setInterval(poll, CONFIG.pollMs); }
-
-if (CONFIG.simulate){
-  setInterval(()=>{
-    const join = Math.random()<0.6 ? 1+Math.floor(Math.random()*3) : 0;
-    const drop = Math.random()<0.75 ? randomDrop(new Date()) : null;
-    applyStats({ attendance: state.attendance+join, kg: drop ? Math.round((state.kg+drop.kg)*10)/10 : state.kg, drop });
-  }, CONFIG.intervalMs);
+function demoTick() {
+  const join = Math.random() < 0.6 ? 1 + Math.floor(Math.random() * 3) : 0;
+  const add = Math.random() < 0.75 ? Math.round((0.4 + Math.random() * 4.4) * 10) / 10 : 0;
+  applyStats(S.att + join, Math.round((S.kg + add) * 10) / 10, false);
 }
+
+// ---- boot ----
+tickClock(); setInterval(tickClock, 1000);
+counters.forEach((c) => setCounter(c, 0, true));
+if (P.demo) applyStats(472, 353.5, true);
+renderNumbers(); renderScene();
+entrance(kgC);
+setInterval(() => show((S.scene + 1) % 3), P.sceneMs);
+if (P.demo) setInterval(demoTick, 3500);
+else { poll(); setInterval(poll, P.pollMs); }
+})();
 </script>
 </body>
 </html>
