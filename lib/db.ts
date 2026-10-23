@@ -66,6 +66,8 @@ function migrate() {
     );
   `);
 
+  migrateGame();
+
   const count = db.prepare("SELECT COUNT(*) AS n FROM categories").get() as { n: number };
   if (count.n > 0) return;
 
@@ -105,6 +107,36 @@ function migrate() {
     deviceKey ?? "dev-secret-change-me",
     "UTM Prototype Station",
   );
+}
+
+// Laser target game (/game). Runs on every start, so databases created before the game existed get it too.
+// status: queued (signed up) -> ready (handed to the target) -> playing -> done | skipped
+function migrateGame() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS game_rounds (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      name         TEXT NOT NULL,
+      status       TEXT NOT NULL DEFAULT 'queued',
+      device_id    TEXT,
+      score        INTEGER,
+      hits         INTEGER,
+      live_score   INTEGER NOT NULL DEFAULT 0,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      started_at   TEXT,
+      finished_at  TEXT
+    );
+    CREATE INDEX IF NOT EXISTS game_rounds_status ON game_rounds(status, id);
+  `);
+
+  // The target's key comes from the environment on the server. Unlike the scale, a missing key
+  // must not stop the app: the game's device API just stays closed until LASER_DEVICE_KEY is set.
+  const key = process.env.LASER_DEVICE_KEY ?? (process.env.NODE_ENV === "production" ? null : "laser-dev-key");
+  if (key) {
+    db.prepare(
+      `INSERT INTO devices (id, api_key, location) VALUES ('LASER-01', ?, 'Laser target game')
+       ON CONFLICT(id) DO UPDATE SET api_key = excluded.api_key`,
+    ).run(key);
+  }
 }
 
 export type Category = { code: number; name: string; rp_per_kg: number };
