@@ -1,148 +1,109 @@
+import type { Metadata } from "next";
+import Link from "next/link";
 import { connection } from "next/server";
-import { db, type Transaction } from "@/lib/db";
+import { currentMonthKey, devices, latestWeighings, listMonths, monthStats } from "@/lib/stats";
 import { AutoRefresh } from "./auto-refresh";
+import { fmt } from "./ui";
+import { MonthFilter } from "./overview/month-filter";
+import { Spotlight } from "./overview/spotlight";
+import { MonthChart } from "./overview/month-chart";
+import { LatestWeighings } from "./overview/latest-weighings";
+import { Scales } from "./overview/scales";
 
-const fmt = (n: number, d = 2) => n.toLocaleString("en-MY", { minimumFractionDigits: d, maximumFractionDigits: d });
+export const metadata: Metadata = { title: "Overview · KITARecycle" };
 
-export default async function Dashboard() {
+export default async function Overview({ searchParams }: PageProps<"/">) {
   await connection(); // always read fresh data
-
-  const totals = db
-    .prepare(
-      `SELECT COUNT(*) AS txns, COALESCE(SUM(weight_kg),0) AS kg, COALESCE(SUM(rp_earned),0) AS rp,
-              COUNT(DISTINCT account_no) AS accounts
-       FROM transactions`,
-    )
-    .get() as { txns: number; kg: number; rp: number; accounts: number };
-
-  const byCategory = db
-    .prepare(
-      `SELECT c.name, SUM(t.weight_kg) AS kg, SUM(t.rp_earned) AS rp
-       FROM transactions t JOIN categories c ON c.code = t.category_code
-       GROUP BY c.code ORDER BY kg DESC`,
-    )
-    .all() as { name: string; kg: number; rp: number }[];
-
-  const recent = db
-    .prepare(
-      `SELECT t.*, a.name AS account_name, c.name AS category_name
-       FROM transactions t
-       JOIN accounts a ON a.account_no = t.account_no
-       JOIN categories c ON c.code = t.category_code
-       ORDER BY t.id DESC LIMIT 25`,
-    )
-    .all() as Transaction[];
-
-  const devices = db.prepare("SELECT id, location, last_seen FROM devices").all() as {
-    id: string;
-    location: string | null;
-    last_seen: string | null;
-  }[];
-
-  const maxKg = Math.max(1, ...byCategory.map((c) => c.kg));
+  const param = (await searchParams).month;
+  const key = typeof param === "string" && /^\d{4}-\d{2}$/.test(param) ? param : currentMonthKey();
+  const M = monthStats(key);
+  const months = listMonths();
+  const isCurrent = key === currentMonthKey();
+  const topMax = Math.max(1, ...M.top.map((a) => a.kg));
 
   return (
-    <div className="space-y-6">
-      <AutoRefresh />
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <h1 className="text-2xl font-semibold">Papan Pemuka</h1>
-        <p className="text-sm text-slate-500">Dikemas kini setiap 3 saat</p>
-      </div>
-
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {[
-          ["Jumlah berat", `${fmt(totals.kg)} kg`],
-          ["Mata ganjaran", `${fmt(totals.rp)} RP`],
-          ["Transaksi", String(totals.txns)],
-          ["Akaun aktif", String(totals.accounts)],
-        ].map(([label, value]) => (
-          <div key={label} className="rounded-lg bg-white p-4 shadow-sm ring-1 ring-slate-200">
-            <p className="text-sm text-slate-500">{label}</p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
-          </div>
-        ))}
-      </section>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <section className="rounded-lg bg-white p-4 shadow-sm ring-1 ring-slate-200 lg:col-span-2">
-          <h2 className="mb-3 font-semibold">Transaksi terkini</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-left text-slate-500">
-                <tr>
-                  <th className="py-2 pr-3 font-medium">Masa (UTC)</th>
-                  <th className="py-2 pr-3 font-medium">Akaun</th>
-                  <th className="py-2 pr-3 font-medium">Kategori</th>
-                  <th className="py-2 pr-3 text-right font-medium">Berat</th>
-                  <th className="py-2 pr-3 text-right font-medium">RP</th>
-                  <th className="py-2 font-medium">Peranti</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {recent.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="py-6 text-center text-slate-400">
-                      Belum ada transaksi. Timbang sesuatu pada penimbang.
-                    </td>
-                  </tr>
-                )}
-                {recent.map((t) => (
-                  <tr key={t.id}>
-                    <td className="py-2 pr-3 whitespace-nowrap tabular-nums">{t.created_at}</td>
-                    <td className="py-2 pr-3">
-                      <div className="font-mono text-xs">{t.account_no}</div>
-                      <div className="text-slate-500">{t.account_name}</div>
-                    </td>
-                    <td className="py-2 pr-3">{t.category_name}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{fmt(t.weight_kg)} kg</td>
-                    <td className="py-2 pr-3 text-right font-medium tabular-nums text-emerald-700">
-                      +{fmt(t.rp_earned)}
-                    </td>
-                    <td className="py-2 font-mono text-xs text-slate-500">{t.device_id}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <div className="space-y-6">
-          <section className="rounded-lg bg-white p-4 shadow-sm ring-1 ring-slate-200">
-            <h2 className="mb-3 font-semibold">Mengikut kategori</h2>
-            {byCategory.length === 0 && <p className="text-sm text-slate-400">Tiada data.</p>}
-            <ul className="space-y-2">
-              {byCategory.map((c) => (
-                <li key={c.name} className="text-sm">
-                  <div className="flex justify-between">
-                    <span>{c.name}</span>
-                    <span className="tabular-nums text-slate-600">{fmt(c.kg)} kg</span>
-                  </div>
-                  <div className="mt-1 h-2 rounded bg-slate-100">
-                    <div className="h-2 rounded bg-emerald-600" style={{ width: `${(c.kg / maxKg) * 100}%` }} />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="rounded-lg bg-white p-4 shadow-sm ring-1 ring-slate-200">
-            <h2 className="mb-3 font-semibold">Peranti</h2>
-            <ul className="space-y-2 text-sm">
-              {devices.map((d) => (
-                <li key={d.id} className="flex justify-between gap-2">
-                  <span>
-                    <span className="font-mono">{d.id}</span>
-                    <span className="block text-slate-500">{d.location}</span>
-                  </span>
-                  <span className="text-right text-slate-500">
-                    {d.last_seen ? `Kali terakhir: ${d.last_seen}` : "Belum pernah sambung"}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
+    <>
+      <AutoRefresh ms={5000} />
+      <div className="in relative z-[5] flex flex-wrap items-center justify-between gap-3">
+        <h1 className="m-0 text-[26px] font-semibold tracking-tight">Overview</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          {isCurrent && <span className="muted inline-flex items-center gap-1.5 text-[13px]"><span className="live" />Live</span>}
+          <MonthFilter options={months} current={key} />
         </div>
       </div>
-    </div>
+
+      <section className="panel in flex flex-wrap gap-8 p-6" aria-label="This month" style={{ animationDelay: ".06s" }}>
+        <Spotlight name={M.name} kg={M.kg} rp={M.rp} weighings={M.weighings} accounts={M.accounts} co2={M.co2}
+          target={M.target} days={M.days} today={M.today} />
+        <MonthChart series={M.series} days={M.days} today={M.today} firstWeekday={M.firstWeekday}
+          monthShort={M.name.slice(0, 3)} target={M.target} total={M.kg} />
+      </section>
+
+      <div className="flex flex-wrap gap-5">
+        <section className="panel in flex min-w-0 flex-[3_1_520px] flex-col gap-4 px-6 py-[22px]" aria-label="Materials" style={{ animationDelay: ".12s" }}>
+          <div className="flex items-baseline justify-between">
+            <h2 className="m-0 text-lg font-semibold">Materials</h2>
+            <Link href="/rates" className="text-sm">Edit rates</Link>
+          </div>
+          {M.mix.length === 0 ? (
+            <p className="muted m-0 py-6 text-center">Nothing weighed in {M.name} yet.</p>
+          ) : (
+            <>
+              <div aria-hidden="true" className="flex h-2.5 gap-0.5 overflow-hidden rounded-sm">
+                {M.mix.map((m) => (
+                  <div key={m.code} style={{ width: `${m.share * 100}%`, background: m.color, transition: "width .5s cubic-bezier(.6,0,.3,1)" }} />
+                ))}
+              </div>
+              <div className="overflow-x-auto">
+                <table className="tbl text-sm">
+                  <thead><tr><th style={{ paddingLeft: 0 }}>Material</th><th className="text-right">Weight</th><th className="text-right">Share</th><th className="text-right">Rate</th><th className="text-right" style={{ paddingRight: 0 }}>RP</th></tr></thead>
+                  <tbody>
+                    {M.mix.map((m) => (
+                      <tr key={m.code}>
+                        <td style={{ paddingLeft: 0 }}><span className="inline-flex items-center gap-2.5"><i className="h-2.5 w-2.5 rounded-sm" style={{ background: m.color }} />{m.name}</span></td>
+                        <td className="num text-right">{fmt(m.kg, 1)} kg</td>
+                        <td className="num muted text-right">{fmt(m.share * 100, 1)}%</td>
+                        <td className="num muted text-right">{fmt(m.rate, m.rate % 1 ? 1 : 0)}</td>
+                        <td className="num text-right" style={{ paddingRight: 0 }}>{fmt(m.rp, 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </section>
+
+        <section className="panel in flex min-w-0 flex-[2_1_340px] flex-col gap-3.5 px-6 py-[22px]" aria-label="Top accounts" style={{ animationDelay: ".18s" }}>
+          <div className="flex items-baseline justify-between">
+            <h2 className="m-0 text-lg font-semibold">Top accounts</h2>
+            <Link href="/accounts" className="text-sm">All accounts</Link>
+          </div>
+          {M.top.length === 0 ? (
+            <p className="muted m-0 py-6 text-center">No one has recycled in {M.name} yet.</p>
+          ) : (
+            <ol className="m-0 flex list-none flex-col p-0">
+              {M.top.map((a, i) => (
+                <li key={a.accountNo} className="grid items-center gap-3 border-b py-2.5" style={{ gridTemplateColumns: "24px minmax(0,1fr) auto", borderColor: "var(--line-soft)" }}>
+                  <span className="num text-[13px]" style={{ color: "var(--faint)" }}>{i + 1}</span>
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">{a.name}</div>
+                    <div className="mt-1 h-[3px] rounded-sm" style={{ background: "var(--line-soft)" }}>
+                      <div className="h-full rounded-sm" style={{ width: `${(a.kg / topMax) * 100}%`, background: "#6FA889", transition: "width .5s cubic-bezier(.6,0,.3,1)" }} />
+                    </div>
+                  </div>
+                  <span className="num text-sm">{fmt(a.kg, 1)} kg</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+      </div>
+
+      <div className="flex flex-wrap gap-5">
+        <LatestWeighings rows={latestWeighings(6)} />
+        <Scales devices={devices()} />
+      </div>
+    </>
   );
 }
