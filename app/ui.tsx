@@ -1,9 +1,16 @@
 // Small shared pieces for the admin pages: the logo mark, a few stroke icons, number formatting.
 
+// Recycle mark: ONE arrow (from 62% along a side, round the corner, head at the next side's middle)
+// drawn three times, turned 120° about the triangle's centre, so the three arrows are identical.
 export function Logo({ size = 22, color = "#1E6B45" }: { size?: number; color?: string }) {
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M7 19H4.8a1.8 1.8 0 0 1-1.6-2.7L4.7 13.7M11 19h8.2a1.8 1.8 0 0 0 1.6-2.7l-1.4-2.4M14.5 16.5 11 19l3.5 2.5M8.4 6.6 9.9 4a1.8 1.8 0 0 1 3.1 0l4.2 7.2M18.7 10.4l-1.5.8-1-3.9M3.3 11.3l3.9-1 1 3.9" />
+      {[0, 120, 240].map((turn) => (
+        <g key={turn} transform={`rotate(${turn} 12 12.8)`}>
+          <path d="M16.96 12.16L19.2 16.02Q20 17.4 18.4 17.4H12" />
+          <path d="M14.4 15 12 17.4l2.4 2.4" />
+        </g>
+      ))}
     </svg>
   );
 }
