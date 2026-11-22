@@ -18,7 +18,6 @@ export default async function Overview({ searchParams }: PageProps<"/">) {
   const key = typeof param === "string" && /^\d{4}-\d{2}$/.test(param) ? param : currentMonthKey();
   const M = monthStats(key);
   const months = listMonths();
-  const isCurrent = key === currentMonthKey();
   const topMax = Math.max(1, ...M.top.map((a) => a.kg));
 
   return (
@@ -27,7 +26,6 @@ export default async function Overview({ searchParams }: PageProps<"/">) {
       <div className="in relative z-[5] flex flex-wrap items-center justify-between gap-3">
         <h1 className="m-0 text-[26px] font-semibold tracking-tight">Overview</h1>
         <div className="flex flex-wrap items-center gap-3">
-          {isCurrent && <span className="muted inline-flex items-center gap-1.5 text-[13px]"><span className="live" />Live</span>}
           <MonthFilter options={months} current={key} />
         </div>
       </div>
