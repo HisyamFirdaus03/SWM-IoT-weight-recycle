@@ -27,7 +27,10 @@ export function MonthChart({ series, days, today, firstWeekday, monthShort, targ
   const Y = (v: number) => (100 - (v / cTop) * 100).toFixed(2);
   const actual = cum.map((v, i) => (i ? "L" : "M") + X(i) + " " + Y(v)).join(" ");
   const area = actual ? `${actual} L${X(cum.length - 1)} 100 L0 100 Z` : "";
-  const endY = cum.length ? (cum[cum.length - 1] / cTop) * 100 : 0;
+  // Labels are placed in pixels: the plot area is the 280px box minus the 24px axis row.
+  const PLOT = 256;
+  const endPx = cum.length ? (cum[cum.length - 1] / cTop) * PLOT : 0;
+  const targetPx = (target / cTop) * PLOT;
 
   return (
     <div className="flex min-w-0 flex-[2_1_520px] flex-col gap-3.5">
@@ -73,17 +76,18 @@ export function MonthChart({ series, days, today, firstWeekday, monthShort, targ
           <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`Running total ${fmt(total)} kg against a ${fmt(target)} kg target`}
             className="absolute w-full overflow-visible" style={{ inset: "0 0 24px 0", height: "calc(100% - 24px)" }}>
             <path d="M0 25H100M0 50H100M0 75H100" stroke="#F0EEE8" strokeWidth="1" vectorEffect="non-scaling-stroke" fill="none" />
-            {area && <path className="area" d={area} fill="#E5EFE8" />}
+            <g className="reveal">{area && <path d={area} fill="#E5EFE8" />}
             <path d={`M0 100 L100 ${Y(target)}`} stroke="#A8A59B" strokeWidth="1.5" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" fill="none" />
-            {actual && <path className="line" d={actual} pathLength={1} stroke="#1E6B45" strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
+            {actual && <path d={actual} fill="none" stroke="#1E6B45" strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />}</g>
           </svg>
           {cum.length > 0 && (
             <div className="num absolute whitespace-nowrap rounded-[3px] border bg-white px-1.5 py-0.5 text-[13px] font-medium"
-              style={{ left: `${X(cum.length - 1)}%`, bottom: `calc(24px + ${endY}%)`, transform: "translate(-50%, -10px)", color: "var(--green)", borderColor: "#CFE2D6", animation: "adm-fade .4s ease 1s both" }}>
+              style={{ left: `${X(cum.length - 1)}%`, bottom: 24 + endPx, transform: `translate(${cum.length > days * 0.9 ? "-100%" : "-50%"}, -10px)`, color: "var(--green)", borderColor: "#CFE2D6", animation: "adm-fade .4s ease 1s both" }}>
               {fmt(total, 1)} kg
             </div>
           )}
-          <div className="muted absolute right-0 whitespace-nowrap text-xs" style={{ bottom: `calc(24px + ${(target / cTop) * 100}%)`, transform: "translateY(-24px)" }}>Target {fmt(target)} kg</div>
+          {/* Under the end of the dashed target line, so it never rises into the chart's header row. */}
+          <div className="muted absolute right-0 whitespace-nowrap bg-white pl-1.5 text-xs" style={{ top: PLOT - targetPx + 10 }}>Target {fmt(target)} kg</div>
           <div className="absolute inset-x-0 bottom-0 flex h-6 justify-between pt-[7px]">
             {TICK_DAYS.filter((d) => d <= days).map((d) => <span key={d} className="num text-xs" style={{ color: "var(--faint)" }}>{d} {monthShort}</span>)}
           </div>

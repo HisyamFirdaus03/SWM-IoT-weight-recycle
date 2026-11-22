@@ -25,12 +25,13 @@
 .adm a { color: var(--green); }
 .adm a:hover { color: var(--green-dark); }
 .adm .num { font-family: var(--font-plex-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+/* Large figures: Plex Sans with tabular digits. Mono gives "0 . 9" a full-width decimal point at this size. */
+.adm .fig { font-family: var(--font-plex-sans), system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .adm .muted { color: var(--muted); }
 .adm .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 @keyframes adm-fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes adm-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
-@keyframes adm-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @keyframes adm-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes adm-blink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 @keyframes adm-row { 0% { opacity: 0; background: var(--amber-tint); } 20% { opacity: 1; background: var(--amber-tint); } 100% { background: transparent; } }
@@ -98,8 +99,9 @@
 .adm .col.future .bar { background: transparent; border: 1px dashed #D6D3CA; border-bottom: 0; height: 12px !important; animation: none; }
 .adm .tip { position: absolute; left: 50%; transform: translateX(-50%); padding: 5px 8px; border-radius: 3px; background: var(--ink); color: #FFFFFF; font-size: 13px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .12s ease; z-index: 2; }
 .adm .col.hot .tip { opacity: 1; }
-.adm .line { fill: none; stroke-dasharray: 1; stroke-dashoffset: 0; animation: adm-draw 1.1s cubic-bezier(.4, 0, .2, 1) both; }
-.adm .area { animation: adm-fade .8s ease .5s both; }
+/* Running total draws in left to right by unclipping it; a dash-offset draw breaks with non-scaling strokes. */
+@keyframes adm-reveal { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+.adm .reveal { animation: adm-reveal 1.1s cubic-bezier(.4, 0, .2, 1) both; }
 .adm .live { width: 7px; height: 7px; border-radius: 50%; background: #2E9A62; animation: adm-blink 2s ease-in-out infinite; }
 
 /* side sheet and toast */

@@ -38,17 +38,18 @@ export function Spotlight(p: Nums & { name: string; target: number; days: number
   const projected = elapsed ? (p.kg / elapsed) * p.days : 0;
   const met = closed ? p.kg >= p.target : projected >= p.target;
 
+  const kgs = (v: number) => fmt(v, Math.abs(v) < 100 ? 1 : 0); // "0.9 kg", but "1,473 kg"
   let pace: string, tag: string;
   if (p.kg === 0) { pace = `Nothing weighed in ${p.name} yet.`; tag = ""; }
-  else if (closed) { pace = `Finished the month at ${fmt(p.kg)} kg.`; tag = met ? "Target met" : `Missed by ${fmt(p.target - p.kg)} kg`; }
-  else { pace = `On pace for about ${fmt(Math.round(projected / 10) * 10)} kg by month end.`; tag = met ? "On track" : `${fmt(p.target - projected)} kg short`; }
+  else if (closed) { pace = `Finished the month at ${kgs(p.kg)} kg.`; tag = met ? "Target met" : `Missed by ${kgs(p.target - p.kg)} kg`; }
+  else { pace = `On pace for about ${fmt(Math.round(projected / 10) * 10)} kg by month end.`; tag = met ? "On track" : `${kgs(p.target - projected)} kg short`; }
 
   return (
     <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-[18px]">
       <div>
         <div className="muted">Collected in {p.name}</div>
         <div className="mt-1.5 flex items-baseline gap-2">
-          <span className="num text-[56px] font-medium leading-none tracking-tight">{fmt(n.kg, 1)}</span>
+          <span className="fig text-[56px] font-medium leading-none">{fmt(n.kg, 1)}</span>
           <span className="muted text-[22px]">kg</span>
         </div>
       </div>
@@ -57,7 +58,7 @@ export function Spotlight(p: Nums & { name: string; target: number; days: number
           <div className="h-full rounded-[3px]" style={{ width: `${pct}%`, background: "var(--green)" }} />
         </div>
         <div className="muted flex justify-between gap-3 text-sm">
-          <span><span className="num" style={{ color: "var(--ink)" }}>{pct}%</span> of {fmt(p.target)} kg target</span>
+          <span><span className="fig" style={{ color: "var(--ink)" }}>{pct}%</span> of {fmt(p.target)} kg target</span>
           <span>{closed ? "Month closed" : `${p.days - (p.today ?? 0)} days left`}</span>
         </div>
       </div>
@@ -66,10 +67,10 @@ export function Spotlight(p: Nums & { name: string; target: number; days: number
         {tag && <span className="rounded-[3px] px-[7px] py-0.5 text-[13px] font-medium" style={{ background: met ? "var(--green-tint)" : "var(--amber-tint)", color: met ? "var(--green-dark)" : "var(--amber-ink)" }}>{tag}</span>}
       </p>
       <dl className="m-0 grid grid-cols-2 gap-x-5 gap-y-4 border-t pt-[18px]" style={{ borderColor: "var(--line-soft)" }}>
-        <div><dt className="muted text-[13px]">RP paid out</dt><dd className="num m-0 mt-1 text-[22px]">{fmt(n.rp)}</dd></div>
-        <div><dt className="muted text-[13px]">Weighings</dt><dd className="num m-0 mt-1 text-[22px]">{fmt(n.weighings)}</dd></div>
-        <div><dt className="muted text-[13px]">Accounts</dt><dd className="num m-0 mt-1 text-[22px]">{fmt(n.accounts)}</dd></div>
-        <div><dt className="muted text-[13px]">CO₂e avoided</dt><dd className="num m-0 mt-1 text-[22px]">{n.co2 >= 1000 ? `${fmt(n.co2 / 1000, 1)} t` : `${fmt(n.co2)} kg`}</dd></div>
+        <div><dt className="muted text-[13px]">RP paid out</dt><dd className="fig m-0 mt-1 text-[22px]">{fmt(n.rp)}</dd></div>
+        <div><dt className="muted text-[13px]">Weighings</dt><dd className="fig m-0 mt-1 text-[22px]">{fmt(n.weighings)}</dd></div>
+        <div><dt className="muted text-[13px]">Accounts</dt><dd className="fig m-0 mt-1 text-[22px]">{fmt(n.accounts)}</dd></div>
+        <div><dt className="muted text-[13px]">CO₂e avoided</dt><dd className="fig m-0 mt-1 text-[22px]">{n.co2 >= 1000 ? fmt(n.co2 / 1000, 1) : fmt(n.co2)} <span className="muted text-[15px]">{n.co2 >= 1000 ? "t" : "kg"}</span></dd></div>
       </dl>
     </div>
   );
