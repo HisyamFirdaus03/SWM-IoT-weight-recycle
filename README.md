@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KITARecycle admin and scale API
 
-## Getting Started
+Next.js 16 app that receives weighings from the IoT scale and lets SWM/UTM staff manage them.
+Live at https://kitarecycle.ghgcope.com (Coolify, Dockerfile in this folder, SQLite on the `/data` volume).
 
-First, run the development server:
+## Pages
+
+| Path | Who | What |
+|---|---|---|
+| `/login` | anyone | Sign-in. "Keep me signed in" = 30-day cookie, otherwise until the browser closes |
+| `/` | admin | Overview for a month: total vs target, daily or running-total chart, materials, top accounts, latest weighings (refreshes every 5 s), scales |
+| `/accounts` | admin | Search, create accounts (`SWMM` + 8 digits), QR label sheet; `/accounts/<no>/label` prints one |
+| `/rates` | admin | Edit RP per kg. Weighings keep the rate they were made with, so changes apply from the next weighing |
+| `/cards` | admin | Printable QR cards: `CMD:OK`, `CMD:BATAL`, `CMD:ZERO` and `CAT:1`…`CAT:15` |
+| `/funrun-board.html` | public | Event big-screen board (polls `/api/board`) |
+| `/game`, `/game/board` | public | Laser target game; `/game/admin` is admin |
+| `/api/device/*` | scales | Authenticated with `X-Device-Id` / `X-Device-Key` |
+
+## Environment
+
+| Variable | Needed | Notes |
+|---|---|---|
+| `ADMIN_USER` | no | Defaults to `admin` |
+| `ADMIN_PASSWORD` | **yes, in production** | Without it the server answers 503 on admin pages. Locally (unset) any login works |
+| `DEVICE_KEY` | **yes, in production** | Seeds scale `SCALE-01` on first start; must match the firmware's `DEVICE_KEY` |
+| `SESSION_SECRET` | no | Signs the session cookie; falls back to `ADMIN_PASSWORD`. Changing either signs everyone out |
+| `MONTHLY_TARGET_KG` | no | Overview target, default 1500 |
+| `DATA_DIR` | no | SQLite folder; `/data` in the Docker image, `./data` locally |
+
+## Run locally
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev -- -p 3100
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Checks: `npx tsc --noEmit`, `npx eslint app lib proxy.ts`, `npm run build`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Admin pages use IBM Plex (scoped to `.adm` in `app/globals.css`); `/game` keeps the default Geist font.

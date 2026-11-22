@@ -68,6 +68,10 @@ function migrate() {
 
   migrateGame();
 
+  // Added with the editable Rates page: when each rate was last changed (NULL = SWM's original).
+  const catCols = db.prepare("PRAGMA table_info(categories)").all() as { name: string }[];
+  if (!catCols.some((c) => c.name === "updated_at")) db.exec("ALTER TABLE categories ADD COLUMN updated_at TEXT");
+
   const count = db.prepare("SELECT COUNT(*) AS n FROM categories").get() as { n: number };
   if (count.n > 0) return;
 

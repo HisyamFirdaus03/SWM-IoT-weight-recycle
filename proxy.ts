@@ -1,29 +1,22 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { authConfigured, SESSION_COOKIE, verifySessionToken } from "@/lib/session";
 
-// The admin pages (create accounts, print QR labels, rates, category cards) sit behind HTTP Basic
-// auth once the app is on the internet. The dashboard and the scales' /api/device/* stay open: the
-// dashboard is the page SWM links to, and devices use their own X-Device-Key.
+// Admin pages need a signed-in session; anything else (the event board, /game, /login and the
+// scales' /api/device/*, which use their own X-Device-Key) stays open.
 export function proxy(request: NextRequest) {
-  const user = process.env.ADMIN_USER ?? "admin";
-  const password = process.env.ADMIN_PASSWORD;
-  if (!password) {
+  if (!authConfigured()) {
     // Locally (npm run dev) there's no password; on the server, refuse rather than run open.
     if (process.env.NODE_ENV !== "production") return NextResponse.next();
     return new NextResponse("ADMIN_PASSWORD is not set on the server", { status: 503 });
   }
+  if (verifySessionToken(request.cookies.get(SESSION_COOKIE)?.value)) return NextResponse.next();
 
-  const header = request.headers.get("authorization") ?? "";
-  if (header.startsWith("Basic ")) {
-    const [u, ...rest] = atob(header.slice(6)).split(":");
-    if (u === user && rest.join(":") === password) return NextResponse.next();
-  }
-  return new NextResponse("Login required", {
-    status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="KITARecycle admin", charset="UTF-8"' },
-  });
+  const login = new URL("/login", request.url);
+  login.searchParams.set("next", request.nextUrl.pathname + request.nextUrl.search);
+  return NextResponse.redirect(login);
 }
 
 export const config = {
-  matcher: ["/accounts/:path*", "/rates/:path*", "/cards/:path*", "/game/admin/:path*"],
+  matcher: ["/", "/accounts/:path*", "/rates/:path*", "/cards/:path*", "/game/admin/:path*"],
 };

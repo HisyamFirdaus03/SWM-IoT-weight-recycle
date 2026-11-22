@@ -1,36 +1,36 @@
+import type { Metadata } from "next";
 import { connection } from "next/server";
-import { db, type Category } from "@/lib/db";
+import { db } from "@/lib/db";
+import { CATEGORY_INFO, GROUP_COLOR } from "@/lib/categories";
+import { RatesEditor, type RateRow } from "./rates-editor";
+
+export const metadata: Metadata = { title: "Rates · KITARecycle" };
 
 export default async function RatesPage() {
   await connection();
-  const rows = db.prepare("SELECT * FROM categories ORDER BY code").all() as Category[];
+  const rows = db.prepare("SELECT code, name, rp_per_kg, updated_at FROM categories ORDER BY code").all() as {
+    code: number; name: string; rp_per_kg: number; updated_at: string | null;
+  }[];
+
+  const rates: RateRow[] = rows.map((r) => {
+    const info = CATEGORY_INFO[r.code];
+    return {
+      code: r.code, name: info?.en ?? r.name, malay: r.name, group: info?.group ?? "Other",
+      color: GROUP_COLOR[info?.group ?? "Other"], rate: r.rp_per_kg,
+      updatedAt: r.updated_at ? r.updated_at.replace(" ", "T") + "Z" : null,
+    };
+  });
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Kadar RP</h1>
-      <p className="text-sm text-slate-600">
-        Kod ditaip pada papan kekunci penimbang. Kadar diambil dari senarai rasmi KITARecycle.
-      </p>
-      <div className="overflow-x-auto rounded-lg bg-white shadow-sm ring-1 ring-slate-200">
-        <table className="w-full text-sm">
-          <thead className="text-left text-slate-500">
-            <tr>
-              <th className="px-4 py-2 font-medium">Kod</th>
-              <th className="px-4 py-2 font-medium">Barangan</th>
-              <th className="px-4 py-2 text-right font-medium">RP / kg</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {rows.map((c) => (
-              <tr key={c.code}>
-                <td className="px-4 py-2 font-mono text-lg">{c.code}</td>
-                <td className="px-4 py-2">{c.name}</td>
-                <td className="px-4 py-2 text-right tabular-nums">{c.rp_per_kg}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <>
+      <div className="in flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="m-0 text-[26px] font-semibold tracking-tight">Rates</h1>
+          <p className="muted m-0 mt-1.5">RP per kilogram for each material. A change applies to weighings made after you save.</p>
+        </div>
+        <span className="muted text-sm">From SWM&apos;s KITARecycle rate card</span>
       </div>
-    </div>
+      <RatesEditor rates={rates} />
+    </>
   );
 }
