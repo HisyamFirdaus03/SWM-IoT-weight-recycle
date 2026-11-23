@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { db } from "@/lib/db";
-import { NAME_MAX, POINTS_PER_CORRECT, QUESTIONS_PER_ROUND } from "@/lib/game";
+import { ANSWER_SECONDS, NAME_MAX, POINTS_PER_CORRECT, QUESTIONS_PER_ROUND } from "@/lib/game";
 import { joinQueue } from "./actions";
 
 const ERRORS: Record<string, string> = {
@@ -51,7 +51,7 @@ export default async function JoinPage({ searchParams }: PageProps<"/game">) {
         <ol className="flex flex-col gap-2 text-sm text-slate-300">
           <li><b className="text-white">1.</b> Masuk barisan dengan nama anda, dan biarkan halaman tiket terbuka.</li>
           <li><b className="text-white">2.</b> Bila nama anda keluar di skrin sasaran, tembak sasaran.</li>
-          <li><b className="text-white">3.</b> Soalan keluar di telefon anda: pilih A, B, C atau D dalam 20 saat.</li>
+          <li><b className="text-white">3.</b> Soalan keluar di telefon anda: pilih A, B, C atau D dalam {ANSWER_SECONDS} saat.</li>
           <li><b className="text-white">4.</b> Tembak lagi untuk soalan seterusnya, sehingga {QUESTIONS_PER_ROUND} soalan.</li>
         </ol>
 

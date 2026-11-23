@@ -52,8 +52,11 @@ export function Ticket({ token }: { token: string }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ seq, choice }),
     }).catch(() => null);
-    if (!res) setError("Tiada sambungan. Cuba lagi.");
-    else if (!res.ok) setError(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Ralat");
+    if (!res || !res.ok) {
+      // Unlock the buttons so the player can tap again: a failed send must never leave them stuck.
+      setPicked(null);
+      setError(!res ? "Tiada sambungan. Tekan jawapan sekali lagi." : (((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Ralat. Cuba lagi."));
+    }
     load();
   }
 
@@ -107,7 +110,8 @@ export function Ticket({ token }: { token: string }) {
                     type="button"
                     disabled={locked}
                     onClick={() => answer(view.open!.seq, i)}
-                    className={`flex min-h-14 items-start gap-3 rounded-xl px-4 py-3 text-left text-base font-medium ring-1 transition ${
+                    style={{ touchAction: "manipulation" }}
+                    className={`flex min-h-14 select-none items-start gap-3 rounded-xl px-4 py-3 text-left text-base font-medium ring-1 transition ${
                       chosen ? "bg-white text-[#0B1020] ring-white" : "bg-white/10 ring-white/15 hover:bg-white/15"
                     } disabled:cursor-default`}
                   >
