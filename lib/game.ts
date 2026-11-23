@@ -5,7 +5,7 @@ import { db } from "./db";
 // the player's phone, and each correct answer scores POINTS_PER_CORRECT.
 export const QUESTIONS_PER_ROUND = 5;
 export const POINTS_PER_CORRECT = 10;
-export const ANSWER_SECONDS = 20; // unanswered after this = wrong
+export const ANSWER_SECONDS = 30; // unanswered after this = wrong (the longest question needs ~20 s to read on a phone)
 export const NAME_MAX = 16; // one line of the target's 16x2 LCD
 export const QUEUE_MAX = 60;
 export const LETTERS = ["A", "B", "C", "D"];
