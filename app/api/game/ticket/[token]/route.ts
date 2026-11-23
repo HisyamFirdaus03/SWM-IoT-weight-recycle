@@ -1,4 +1,4 @@
-import { getRoundByToken, queuePosition, quizView, rankOf, settle, submitAnswer } from "@/lib/game";
+import { getRoundByToken, queuePosition, rankOf, roundView, settle, submitAnswer } from "@/lib/game";
 
 // The player's phone. The token in the URL is the only key: it's random, so a player can't answer
 // for someone else by changing a number.
@@ -8,14 +8,14 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/game/ticket/[to
   let round = getRoundByToken(token);
   if (!round) return Response.json({ error: "not found" }, { status: 404 });
   round = settle(round);
-  const quiz = quizView(round);
+  const view = roundView(round);
   return Response.json(
     {
       name: round.name,
       status: round.status,
       queuePosition: round.status === "queued" ? queuePosition(round.id) : null,
       rank: round.status === "done" ? rankOf(round.score ?? 0) : null,
-      ...quiz,
+      ...view,
     },
     { headers: { "Cache-Control": "no-store" } },
   );

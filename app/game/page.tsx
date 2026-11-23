@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { db } from "@/lib/db";
-import { ANSWER_SECONDS, NAME_MAX, POINTS_PER_CORRECT, QUESTIONS_PER_ROUND } from "@/lib/game";
+import { CORRECT_BONUS, NAME_MAX, POINTS_PER_HIT, ROUND_SECONDS, WRONG_PENALTY } from "@/lib/game";
 import { joinQueue } from "./actions";
 
 const ERRORS: Record<string, string> = {
@@ -21,10 +21,10 @@ export default async function JoinPage({ searchParams }: PageProps<"/game">) {
       <div className="mx-auto flex max-w-md flex-col gap-8">
         <header className="flex flex-col gap-2">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#FF5A5A]">Laser Target</p>
-          <h1 className="text-4xl font-black leading-tight">Tembak sasaran, jawab soalan!</h1>
+          <h1 className="text-4xl font-black leading-tight">Tembak, kumpul mata, jawab soalan!</h1>
           <p className="text-slate-300">
-            Setiap tembakan tepat membuka satu soalan kitar semula di telefon anda. Jawapan betul{" "}
-            <b className="text-white">+{POINTS_PER_CORRECT} mata</b>. {QUESTIONS_PER_ROUND} soalan sepusingan; skor tertinggi masuk papan pendahulu.
+            {ROUND_SECONDS} saat. Setiap tembakan tepat <b className="text-white">+{POINTS_PER_HIT}</b>. Sesetengah tembakan membuka soalan di
+            telefon anda: betul <b className="text-white">+{CORRECT_BONUS}</b>, salah <b className="text-white">−{WRONG_PENALTY}</b>. Masa tetap berjalan!
           </p>
         </header>
 
@@ -50,9 +50,9 @@ export default async function JoinPage({ searchParams }: PageProps<"/game">) {
 
         <ol className="flex flex-col gap-2 text-sm text-slate-300">
           <li><b className="text-white">1.</b> Masuk barisan dengan nama anda, dan biarkan halaman tiket terbuka.</li>
-          <li><b className="text-white">2.</b> Bila nama anda keluar di skrin sasaran, tembak sasaran.</li>
-          <li><b className="text-white">3.</b> Soalan keluar di telefon anda: pilih A, B, C atau D dalam {ANSWER_SECONDS} saat.</li>
-          <li><b className="text-white">4.</b> Tembak lagi untuk soalan seterusnya, sehingga {QUESTIONS_PER_ROUND} soalan.</li>
+          <li><b className="text-white">2.</b> Bila nama anda keluar di skrin sasaran, tembak sasaran untuk mula (3-2-1).</li>
+          <li><b className="text-white">3.</b> Tembak sebanyak mungkin dalam {ROUND_SECONDS} saat.</li>
+          <li><b className="text-white">4.</b> Bila soalan keluar di telefon, sasaran berhenti mengira sehingga anda menjawab. Jawab cepat!</li>
         </ol>
 
         <Link href="/game/board" className="text-sm text-slate-400 underline hover:text-white">

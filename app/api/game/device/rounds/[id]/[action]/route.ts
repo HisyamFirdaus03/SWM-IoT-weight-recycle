@@ -1,10 +1,11 @@
 import { authenticateDevice } from "@/lib/device-auth";
-import { askNext, endRound, getRound, quizView, rankOf, settle, type Round } from "@/lib/game";
+import { finishRound, getRound, rankOf, recordHits, roundView, settle, skipRound, startRound, type Round } from "@/lib/game";
 
 // Round lifecycle from the target (all POST, all safe to resend):
-//   hit     a laser hit: starts the round if needed and asks the next question on the player's phone
-//   state   polled while a question is open: has the player answered, and was it right?
-//   finish  the player stopped shooting: end with the score so far
+//   start   GO after the countdown: the 30 s clock starts
+//   hit     { hits, ask }  hit count so far; ask = the hit number that should ask a question (0 = none)
+//   state   polled while a question is open: answered yet, and was it right?
+//   finish  { hits }  the clock ran out: final count, score and rank
 //   skip    the player never showed up (or staff aborted)
 // Every action answers with the same compact state, sized for the ESP32.
 export async function POST(req: Request, ctx: RouteContext<"/api/game/device/rounds/[id]/[action]">) {
@@ -15,24 +16,28 @@ export async function POST(req: Request, ctx: RouteContext<"/api/game/device/rou
   let round = getRound(Number(id));
   if (!round || round.device_id !== deviceId) return Response.json({ error: "round not found" }, { status: 404 });
 
+  const body = (await req.json().catch(() => ({}))) as { hits?: unknown; ask?: unknown };
+  const hits = Math.max(0, Number(body.hits) || 0);
+  const ask = Math.max(0, Number(body.ask) || 0);
+
   switch (action) {
-    case "hit":
-      if (round.status !== "ready" && round.status !== "playing" && round.status !== "done") {
+    case "start":
+      if (round.status !== "ready" && round.status !== "playing") {
         return Response.json({ error: `round is ${round.status}` }, { status: 409 });
       }
-      round = askNext(round);
+      round = startRound(round);
+      break;
+    case "hit":
+      round = recordHits(round, hits, ask);
       break;
     case "state":
       round = settle(round);
       break;
     case "finish":
-      endRound(round);
-      round = getRound(round.id)!;
+      round = finishRound(round, hits);
       break;
     case "skip":
-      if (round.status === "ready" || round.status === "playing") {
-        endRound({ ...round, status: "ready" } as Round); // skip = no score kept
-      }
+      skipRound(round);
       round = getRound(round.id)!;
       break;
     default:
@@ -42,17 +47,17 @@ export async function POST(req: Request, ctx: RouteContext<"/api/game/device/rou
 }
 
 function deviceState(round: Round) {
-  const q = quizView(round);
+  const v = roundView(round);
   return {
     status: round.status,
-    asked: q.asked,
-    answered: q.answered,
-    total: q.total,
-    pending: q.open !== null,
-    secondsLeft: q.open?.secondsLeft ?? 0,
-    lastSeq: q.last?.seq ?? 0,
-    lastCorrect: q.last?.correct ?? false,
-    score: q.score,
+    hits: v.hits,
+    asked: v.asked,
+    pending: v.open !== null,
+    lastSeq: v.last?.seq ?? 0,
+    lastCorrect: v.last?.correct ?? false,
+    lastAnswered: v.last ? !v.last.unanswered : false,
+    bonus: v.bonus,
+    score: v.score,
     rank: round.status === "done" ? rankOf(round.score ?? 0) : 0,
   };
 }

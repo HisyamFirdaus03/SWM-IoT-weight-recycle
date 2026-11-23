@@ -8,7 +8,7 @@ import { LETTERS, boardData } from "@/lib/game";
 // and a QR to the sign-up page.
 export default async function BoardPage() {
   await connection();
-  const { top, current, quiz, next, queued, played } = boardData();
+  const { top, current, view, next, queued, played, category } = boardData();
 
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost";
@@ -24,7 +24,7 @@ export default async function BoardPage() {
           <p className="text-[clamp(14px,1.2vw,24px)] font-semibold uppercase tracking-[0.25em] text-[#FF5A5A]">Laser Target</p>
           <h1 className="text-[clamp(32px,4vw,80px)] font-black leading-none">Papan Pendahulu</h1>
         </div>
-        <p className="text-[clamp(14px,1.2vw,24px)] text-slate-300">{played} pusingan dimainkan hari ini</p>
+        <p className="text-right text-[clamp(14px,1.2vw,24px)] text-slate-300">{category ? <>Soalan: <b className="text-white">{category.name}</b><br /></> : null}{played} pusingan dimainkan hari ini</p>
       </header>
 
       <div className="grid flex-1 gap-[2vw] lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
@@ -64,34 +64,31 @@ export default async function BoardPage() {
             {current ? (
               <>
                 <p className="mt-2 truncate text-[clamp(28px,3vw,64px)] font-black">{current.name}</p>
-                {current.status === "playing" && quiz ? (
+                {current.status === "playing" && view ? (
                   <div className="mt-2 flex flex-col gap-3">
                     <div className="flex items-end justify-between gap-4">
-                      <p className="text-[clamp(48px,6vw,128px)] font-black leading-none tabular-nums text-[#FF5A5A]">{quiz.score}</p>
-                      <p className="text-[clamp(18px,1.6vw,34px)] font-bold tabular-nums text-slate-300">
-                        Soalan {Math.max(quiz.asked, 1)}/{quiz.total}
+                      <p className="text-[clamp(48px,6vw,128px)] font-black leading-none tabular-nums text-[#FF5A5A]">{view.score}</p>
+                      <p className={`text-[clamp(24px,2.4vw,52px)] font-black tabular-nums ${view.secondsLeft <= 5 ? "text-[#FF8A8A]" : "text-slate-200"}`}>
+                        {view.secondsLeft}s
                       </p>
                     </div>
-                    {quiz.open ? (
-                      <div className="rounded-2xl bg-white/5 p-[1vw]">
-                        <div className="flex justify-between gap-3 text-[clamp(12px,0.9vw,18px)] text-slate-400">
-                          <span>Menjawab di telefon…</span>
-                          <span className="tabular-nums">{quiz.open.secondsLeft}s</span>
-                        </div>
-                        <p className="mt-1 text-[clamp(15px,1.25vw,26px)] font-bold leading-snug">{quiz.open.text}</p>
+                    {view.open ? (
+                      <div className="rounded-2xl bg-white/5 p-[1vw] ring-2 ring-[#FF5A5A]">
+                        <p className="text-[clamp(12px,0.9vw,18px)] font-bold uppercase tracking-wider text-[#FF8A8A]">Soalan! Menjawab di telefon…</p>
+                        <p className="mt-1 text-[clamp(15px,1.25vw,26px)] font-bold leading-snug">{view.open.text}</p>
                         <ol className="mt-2 grid gap-1 text-[clamp(13px,1vw,21px)] text-slate-200">
-                          {quiz.open.options.map((o, i) => (
+                          {view.open.options.map((o, i) => (
                             <li key={i}><b className="text-white">{LETTERS[i]}.</b> {o}</li>
                           ))}
                         </ol>
                       </div>
-                    ) : quiz.last ? (
-                      <p className={`text-[clamp(18px,1.6vw,34px)] font-bold ${quiz.last.correct ? "text-emerald-400" : "text-[#FF8A8A]"}`}>
-                        {quiz.last.correct ? "Betul! +10" : `${quiz.last.timedOut ? "Masa tamat" : "Salah"} · Jawapan ${quiz.last.answerLetter}`}
-                        <span className="block text-[clamp(14px,1.1vw,22px)] font-normal text-slate-300">Tembak untuk soalan seterusnya</span>
+                    ) : view.last ? (
+                      <p className={`text-[clamp(18px,1.6vw,34px)] font-bold ${view.last.correct ? "text-emerald-400" : "text-[#FF8A8A]"}`}>
+                        {view.last.correct ? "Betul! +50" : view.last.unanswered ? "Soalan tidak dijawab" : `Salah −10 · Jawapan ${view.last.answerLetter}`}
+                        <span className="block text-[clamp(14px,1.1vw,22px)] font-normal text-slate-300">{view.hits} tembakan tepat</span>
                       </p>
                     ) : (
-                      <p className="text-[clamp(18px,1.6vw,32px)] text-slate-300">Tembak sasaran untuk soalan pertama</p>
+                      <p className="text-[clamp(18px,1.6vw,32px)] text-slate-300">{view.hits} tembakan tepat</p>
                     )}
                   </div>
                 ) : (
