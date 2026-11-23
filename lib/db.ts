@@ -1,6 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { randomBytes } from "node:crypto";
+import { QUIZ } from "./quiz";
 
 // Mock of the KITARecycle backend for the prototype. SQLite via Node's built-in
 // driver, so there are no native npm deps. The file lives in web/data/ locally, and in the
@@ -130,7 +132,52 @@ function migrateGame() {
       finished_at  TEXT
     );
     CREATE INDEX IF NOT EXISTS game_rounds_status ON game_rounds(status, id);
+
+    -- Quiz questions (from "soalan Power Shoot.docx"). answer = index 0-3 of the correct option.
+    CREATE TABLE IF NOT EXISTS game_questions (
+      id      INTEGER PRIMARY KEY,
+      text    TEXT NOT NULL,
+      opt_a   TEXT NOT NULL,
+      opt_b   TEXT NOT NULL,
+      opt_c   TEXT NOT NULL,
+      opt_d   TEXT NOT NULL,
+      answer  INTEGER NOT NULL CHECK (answer BETWEEN 0 AND 3),
+      active  INTEGER NOT NULL DEFAULT 1
+    );
+
+    -- One row per question asked in a round. perm = the order the options were shown in (e.g. "2,0,3,1"),
+    -- choice = the shown position the player tapped (NULL = ran out of time).
+    CREATE TABLE IF NOT EXISTS game_answers (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      round_id     INTEGER NOT NULL REFERENCES game_rounds(id) ON DELETE CASCADE,
+      seq          INTEGER NOT NULL,
+      question_id  INTEGER NOT NULL REFERENCES game_questions(id),
+      perm         TEXT NOT NULL,
+      choice       INTEGER,
+      correct      INTEGER,
+      asked_at     TEXT NOT NULL DEFAULT (datetime('now')),
+      answered_at  TEXT,
+      UNIQUE (round_id, seq)
+    );
   `);
+
+  // Added with the quiz: each round's ticket page is reached by a random token, not its guessable id.
+  const roundCols = db.prepare("PRAGMA table_info(game_rounds)").all() as { name: string }[];
+  if (!roundCols.some((c) => c.name === "token")) {
+    db.exec("ALTER TABLE game_rounds ADD COLUMN token TEXT");
+    const rows = db.prepare("SELECT id FROM game_rounds").all() as { id: number }[];
+    const set = db.prepare("UPDATE game_rounds SET token = ? WHERE id = ?");
+    for (const r of rows) set.run(randomBytes(12).toString("hex"), r.id);
+    db.exec("CREATE UNIQUE INDEX IF NOT EXISTS game_rounds_token ON game_rounds(token)");
+  }
+
+  const qCount = db.prepare("SELECT COUNT(*) AS n FROM game_questions").get() as { n: number };
+  if (qCount.n === 0) {
+    const ins = db.prepare(
+      "INSERT INTO game_questions (id, text, opt_a, opt_b, opt_c, opt_d, answer) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    );
+    for (const q of QUIZ) ins.run(...q);
+  }
 
   // The target's key comes from the environment on the server. Unlike the scale, a missing key
   // must not stop the app: the game's device API just stays closed until LASER_DEVICE_KEY is set.

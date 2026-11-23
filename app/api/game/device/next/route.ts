@@ -1,9 +1,9 @@
 import { db } from "@/lib/db";
 import { authenticateDevice } from "@/lib/device-auth";
-import { POINTS_PER_HIT, ROUND_SECONDS, type Round } from "@/lib/game";
+import { QUESTIONS_PER_ROUND, type Round } from "@/lib/game";
 
 // The target asks "who's next?" every couple of seconds while idle.
-// 200 { roundId, name, seconds, points } or 204 when nobody is queued.
+// 200 { roundId, name, questions } or 204 when nobody is queued.
 export async function GET(req: Request) {
   const deviceId = authenticateDevice(req);
   if (deviceId instanceof Response) return deviceId;
@@ -30,5 +30,5 @@ export async function GET(req: Request) {
     round = { ...queued, status: "ready", device_id: deviceId };
   }
 
-  return Response.json({ roundId: round.id, name: round.name, seconds: ROUND_SECONDS, points: POINTS_PER_HIT });
+  return Response.json({ roundId: round.id, name: round.name, questions: QUESTIONS_PER_ROUND });
 }

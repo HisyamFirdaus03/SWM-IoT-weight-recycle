@@ -2,13 +2,13 @@ import QRCode from "qrcode";
 import { headers } from "next/headers";
 import { connection } from "next/server";
 import { AutoRefresh } from "@/app/auto-refresh";
-import { ROUND_SECONDS, boardData } from "@/lib/game";
+import { LETTERS, boardData } from "@/lib/game";
 
 // Big-screen leaderboard: today's top 10, who's playing (live score + time left), who's next,
 // and a QR to the sign-up page.
 export default async function BoardPage() {
   await connection();
-  const { top, current, next, queued, played, secondsLeft } = boardData();
+  const { top, current, quiz, next, queued, played } = boardData();
 
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost";
@@ -28,7 +28,8 @@ export default async function BoardPage() {
       </header>
 
       <div className="grid flex-1 gap-[2vw] lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        <section aria-label="Sepuluh teratas hari ini" className="rounded-3xl bg-white/5 p-[2vw] ring-1 ring-white/10">
+        <section aria-label="Sepuluh teratas hari ini" className="flex flex-col gap-[2vh] rounded-3xl bg-white/5 p-[2vw] ring-1 ring-white/10">
+          <div className="flex-1">
           {top.length === 0 ? (
             <p className="text-[clamp(18px,1.8vw,36px)] text-slate-300">Belum ada skor. Jadilah yang pertama!</p>
           ) : (
@@ -45,6 +46,14 @@ export default async function BoardPage() {
               ))}
             </ol>
           )}
+          </div>
+          <section aria-label="Daftar untuk bermain" className="flex items-center gap-[1.5vw] rounded-2xl bg-white p-[1.2vw] text-[#0B1020]">
+            <div className="w-[clamp(96px,9vw,180px)] shrink-0" dangerouslySetInnerHTML={{ __html: qr }} />
+            <div className="min-w-0">
+              <p className="text-[clamp(20px,2vw,40px)] font-black leading-tight">Imbas untuk main</p>
+              <p className="truncate text-[clamp(12px,1vw,20px)] text-slate-600">{joinUrl}</p>
+            </div>
+          </section>
         </section>
 
         <div className="flex flex-col gap-[2vw]">
@@ -55,12 +64,35 @@ export default async function BoardPage() {
             {current ? (
               <>
                 <p className="mt-2 truncate text-[clamp(28px,3vw,64px)] font-black">{current.name}</p>
-                {current.status === "playing" ? (
-                  <div className="mt-2 flex items-end justify-between gap-4">
-                    <p className="text-[clamp(48px,6vw,128px)] font-black leading-none tabular-nums text-[#FF5A5A]">{current.live_score}</p>
-                    <p className="text-[clamp(20px,2vw,44px)] font-bold tabular-nums text-slate-300">
-                      {secondsLeft ?? ROUND_SECONDS}s
-                    </p>
+                {current.status === "playing" && quiz ? (
+                  <div className="mt-2 flex flex-col gap-3">
+                    <div className="flex items-end justify-between gap-4">
+                      <p className="text-[clamp(48px,6vw,128px)] font-black leading-none tabular-nums text-[#FF5A5A]">{quiz.score}</p>
+                      <p className="text-[clamp(18px,1.6vw,34px)] font-bold tabular-nums text-slate-300">
+                        Soalan {Math.max(quiz.asked, 1)}/{quiz.total}
+                      </p>
+                    </div>
+                    {quiz.open ? (
+                      <div className="rounded-2xl bg-white/5 p-[1vw]">
+                        <div className="flex justify-between gap-3 text-[clamp(12px,0.9vw,18px)] text-slate-400">
+                          <span>Menjawab di telefon…</span>
+                          <span className="tabular-nums">{quiz.open.secondsLeft}s</span>
+                        </div>
+                        <p className="mt-1 text-[clamp(15px,1.25vw,26px)] font-bold leading-snug">{quiz.open.text}</p>
+                        <ol className="mt-2 grid gap-1 text-[clamp(13px,1vw,21px)] text-slate-200">
+                          {quiz.open.options.map((o, i) => (
+                            <li key={i}><b className="text-white">{LETTERS[i]}.</b> {o}</li>
+                          ))}
+                        </ol>
+                      </div>
+                    ) : quiz.last ? (
+                      <p className={`text-[clamp(18px,1.6vw,34px)] font-bold ${quiz.last.correct ? "text-emerald-400" : "text-[#FF8A8A]"}`}>
+                        {quiz.last.correct ? "Betul! +10" : `${quiz.last.timedOut ? "Masa tamat" : "Salah"} · Jawapan ${quiz.last.answerLetter}`}
+                        <span className="block text-[clamp(14px,1.1vw,22px)] font-normal text-slate-300">Tembak untuk soalan seterusnya</span>
+                      </p>
+                    ) : (
+                      <p className="text-[clamp(18px,1.6vw,32px)] text-slate-300">Tembak sasaran untuk soalan pertama</p>
+                    )}
                   </div>
                 ) : (
                   <p className="mt-2 text-[clamp(18px,1.6vw,32px)] text-slate-300">Tembak sasaran untuk mula</p>
@@ -84,13 +116,6 @@ export default async function BoardPage() {
             )}
           </section>
 
-          <section aria-label="Daftar untuk bermain" className="flex items-center gap-[1.5vw] rounded-3xl bg-white p-[1.5vw] text-[#0B1020]">
-            <div className="w-[clamp(96px,9vw,180px)] shrink-0" dangerouslySetInnerHTML={{ __html: qr }} />
-            <div className="min-w-0">
-              <p className="text-[clamp(20px,2vw,40px)] font-black leading-tight">Imbas untuk main</p>
-              <p className="truncate text-[clamp(12px,1vw,20px)] text-slate-600">{joinUrl}</p>
-            </div>
-          </section>
         </div>
       </div>
     </div>

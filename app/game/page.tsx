@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { db } from "@/lib/db";
-import { NAME_MAX, ROUND_SECONDS } from "@/lib/game";
+import { NAME_MAX, POINTS_PER_CORRECT, QUESTIONS_PER_ROUND } from "@/lib/game";
 import { joinQueue } from "./actions";
 
 const ERRORS: Record<string, string> = {
@@ -21,10 +21,10 @@ export default async function JoinPage({ searchParams }: PageProps<"/game">) {
       <div className="mx-auto flex max-w-md flex-col gap-8">
         <header className="flex flex-col gap-2">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#FF5A5A]">Laser Target</p>
-          <h1 className="text-4xl font-black leading-tight">Tembak sasaran, kumpul mata!</h1>
+          <h1 className="text-4xl font-black leading-tight">Tembak sasaran, jawab soalan!</h1>
           <p className="text-slate-300">
-            {ROUND_SECONDS} saat. Setiap tembakan tepat <b className="text-white">+10 mata</b>. Skor tertinggi masuk papan
-            pendahulu.
+            Setiap tembakan tepat membuka satu soalan kitar semula di telefon anda. Jawapan betul{" "}
+            <b className="text-white">+{POINTS_PER_CORRECT} mata</b>. {QUESTIONS_PER_ROUND} soalan sepusingan; skor tertinggi masuk papan pendahulu.
           </p>
         </header>
 
@@ -49,9 +49,10 @@ export default async function JoinPage({ searchParams }: PageProps<"/game">) {
         </form>
 
         <ol className="flex flex-col gap-2 text-sm text-slate-300">
-          <li><b className="text-white">1.</b> Masuk barisan dengan nama anda.</li>
-          <li><b className="text-white">2.</b> Bila nama anda keluar di skrin sasaran, tembak sasaran untuk mula.</li>
-          <li><b className="text-white">3.</b> Tembak sebanyak mungkin dalam {ROUND_SECONDS} saat.</li>
+          <li><b className="text-white">1.</b> Masuk barisan dengan nama anda, dan biarkan halaman tiket terbuka.</li>
+          <li><b className="text-white">2.</b> Bila nama anda keluar di skrin sasaran, tembak sasaran.</li>
+          <li><b className="text-white">3.</b> Soalan keluar di telefon anda: pilih A, B, C atau D dalam 20 saat.</li>
+          <li><b className="text-white">4.</b> Tembak lagi untuk soalan seterusnya, sehingga {QUESTIONS_PER_ROUND} soalan.</li>
         </ol>
 
         <Link href="/game/board" className="text-sm text-slate-400 underline hover:text-white">
