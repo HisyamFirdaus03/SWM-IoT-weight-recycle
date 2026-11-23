@@ -19,6 +19,7 @@ export default async function CardsPage() {
     { code: "CMD:OK", title: "Confirm", desc: "Sends the weight on the scale. Same as pressing SAVE.", bg: "#1E6B45", ink: "#FFFFFF" },
     { code: "CMD:BATAL", title: "Cancel", desc: "Weigh again, or finish with this person.", bg: "#2B2E2A", ink: "#FFFFFF" },
     { code: "CMD:ZERO", title: "Zero the scale", desc: "Platform must be empty. Works on the start screen.", bg: "#E9E6DD", ink: "#1A1C19" },
+    { code: "CMD:WIFI", title: "Change WiFi", desc: "Opens the scale's setup WiFi. Works on the start screen.", bg: "#E9E6DD", ink: "#1A1C19" },
   ].map(async (a) => ({ ...a, svg: await qr(a.code) })));
 
   const cards: MaterialCard[] = await Promise.all(rows.map(async (c) => {
