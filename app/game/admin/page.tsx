@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { connection } from "next/server";
 import { AutoRefresh } from "@/app/auto-refresh";
 import { db } from "@/lib/db";
@@ -27,7 +28,10 @@ export default async function GameAdminPage() {
     <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-8 text-slate-900">
       <AutoRefresh ms={3000} />
       <div className="flex flex-wrap items-end justify-between gap-2">
-        <h1 className="text-2xl font-semibold">Laser Target · Pengurusan</h1>
+        <div className="flex flex-wrap items-baseline gap-x-4">
+          <h1 className="text-2xl font-semibold">Laser Target · Pengurusan</h1>
+          <Link href="/game/admin/soalan" className="text-sm font-medium text-emerald-700 underline">Urus soalan & kategori</Link>
+        </div>
         <p className="text-sm text-slate-600">
           Sasaran LASER-01:{" "}
           {!device ? "kunci peranti belum ditetapkan (LASER_DEVICE_KEY)" : device.last_seen ? `kali terakhir ${device.last_seen} UTC` : "belum pernah sambung"}

@@ -1,6 +1,8 @@
-// Questions from "soalan Power Shoot.docx". This list is the source of truth: on every start the
-// database is synced to it (edits applied, removed ids switched off). Q6 was removed: it repeated Q5.
+// Starting question banks, copied into the database on the first start with categories. After that,
+// questions are edited on /game/admin/soalan and these lists are not read again.
 // [id, question, option A, option B, option C, option D, index of the correct option (0 = A)]
+
+// "Kitar Semula", from "soalan Power Shoot.docx" (Q6 removed: it repeated Q5).
 export const QUIZ: [number, string, string, string, string, string, number][] = [
   [1, "Apakah jenis plastik yang biasanya digunakan untuk menghasilkan botol air mineral?",
     "PVC", "PET", "Polistirena", "Melamin", 1],
@@ -28,4 +30,23 @@ export const QUIZ: [number, string, string, string, string, string, number][] = 
     "Membakar semua sisa makanan secara terbuka", "Menghantar semua sisa makanan ke tapak pelupusan",
     "Mengasingkan sisa makanan dan memprosesnya melalui pencernaan anaerobik untuk menghasilkan biogas",
     "Mencampurkan sisa makanan dengan plastik sebelum dilupuskan", 2],
+];
+
+// "Tenaga", from "Soalan Tenaga.docx". [question, A, B, C, D, index of the correct option]
+export const TENAGA: [string, string, string, string, string, number][] = [
+  ["Mengapakah penggunaan tenaga solar dianggap lebih mesra alam berbanding tenaga arang batu?", "Solar menghasilkan lebih banyak asap", "Solar tidak memerlukan cahaya matahari", "Solar menghasilkan elektrik tanpa pembakaran bahan api", "Solar menggunakan lebih banyak air", 2],
+  ["Sebuah rumah menggunakan penghawa dingin selama 10 jam sehari. Apakah tindakan paling berkesan untuk mengurangkan penggunaan elektrik?", "Menetapkan suhu pada 16°C", "Menutup pintu dan tingkap serta menetapkan suhu 24–26°C", "Membuka tingkap semasa penghawa dingin beroperasi", "Menghidupkan semua peralatan elektrik serentak", 1],
+  ["Apakah yang dimaksudkan dengan kecekapan tenaga?", "Menggunakan lebih banyak tenaga untuk menghasilkan produk", "Menghasilkan output yang sama dengan penggunaan tenaga yang lebih rendah", "Mengurangkan pengeluaran produk", "Menggunakan tenaga tanpa kawalan", 1],
+  ["Apakah kesan penggunaan bahan api fosil secara berlebihan?", "Mengurangkan pemanasan global", "Mengurangkan karbon dioksida di atmosfera", "Meningkatkan pelepasan gas rumah hijau", "Menghapuskan pencemaran udara", 2],
+  ["Sebuah lampu berkuasa 100 W digunakan selama 10 jam. Berapakah tenaga elektrik yang digunakan?", "0.1 kWh", "1 kWh", "10 kWh", "100 kWh", 1],
+  ["Mengapakah tenaga angin tidak dapat dijana secara konsisten di semua lokasi?", "Angin hanya wujud pada waktu malam", "Kelajuan dan corak angin berbeza mengikut lokasi dan masa", "Turbin angin memerlukan arang batu", "Angin tidak mempunyai tenaga kinetik", 1],
+  ["Apakah fungsi bateri dalam sistem solar fotovolta (PV)?", "Menghasilkan cahaya matahari", "Menyimpan lebihan tenaga elektrik untuk kegunaan kemudian", "Mengurangkan keamatan cahaya matahari", "Menghasilkan bahan api fosil", 1],
+  ["Mengapakah peralatan elektrik yang dibiarkan dalam mod standby masih boleh menggunakan tenaga?", "Komponen elektronik masih menggunakan sedikit kuasa", "Peralatan menghasilkan tenaga sendiri", "Elektrik bertukar menjadi air", "Peralatan menyimpan cahaya matahari", 0],
+  ["Sebuah kilang menggantikan motor elektrik lama dengan motor berkecekapan tinggi. Apakah manfaat utamanya?", "Meningkatkan kehilangan tenaga", "Mengurangkan penggunaan elektrik untuk menghasilkan output yang sama", "Meningkatkan pelepasan karbon", "Mengurangkan kapasiti pengeluaran", 1],
+  ["Apakah peranan utama hidrogen hijau dalam peralihan tenaga?", "Menggantikan semua sumber tenaga boleh baharu", "Menjadi pembawa tenaga rendah karbon apabila dihasilkan menggunakan tenaga boleh baharu", "Menghasilkan arang batu", "Meningkatkan penggunaan petroleum", 1],
+  ["Apakah yang dimaksudkan dengan biojisim sebagai sumber tenaga?", "Tenaga yang diperoleh daripada batuan", "Bahan organik daripada tumbuhan dan haiwan yang boleh digunakan untuk menghasilkan tenaga", "Tenaga yang diperoleh daripada uranium", "Tenaga yang dihasilkan daripada angin", 1],
+  ["Antara berikut, yang manakah sesuai digunakan sebagai bahan mentah untuk menghasilkan biogas?", "Plastik dan kaca", "Sisa makanan dan najis haiwan", "Besi dan aluminium", "Pasir dan batu", 1],
+  ["Apakah proses utama yang digunakan untuk menukarkan sisa makanan kepada biogas?", "Pembakaran terbuka", "Pencernaan anaerobik", "Penapisan minyak", "Penyulingan air", 1],
+  ["Apakah gas utama yang terkandung dalam biogas dan boleh digunakan sebagai bahan api?", "Oksigen", "Nitrogen", "Metana", "Hidrogen sulfida", 2],
+  ["Mengapakah proses pencernaan anaerobik perlu dijalankan tanpa kehadiran oksigen?", "Untuk menggalakkan aktiviti mikroorganisma anaerobik menghasilkan biogas", "Untuk menghalang semua aktiviti mikroorganisma", "Untuk menghasilkan lebih banyak oksigen", "Untuk menukarkan sisa makanan kepada plastik", 0],
 ];

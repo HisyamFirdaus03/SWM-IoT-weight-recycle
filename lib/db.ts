@@ -2,7 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
-import { QUIZ } from "./quiz";
+import { QUIZ, TENAGA } from "./quiz";
 
 // Mock of the KITARecycle backend for the prototype. SQLite via Node's built-in
 // driver, so there are no native npm deps. The file lives in web/data/ locally, and in the
@@ -171,16 +171,39 @@ function migrateGame() {
     db.exec("CREATE UNIQUE INDEX IF NOT EXISTS game_rounds_token ON game_rounds(token)");
   }
 
-  // Sync the question bank to lib/quiz.ts. Removed questions are switched off, not deleted: past
-  // answers still point at them.
-  const upsert = db.prepare(
-    `INSERT INTO game_questions (id, text, opt_a, opt_b, opt_c, opt_d, answer, active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)
-     ON CONFLICT(id) DO UPDATE SET text = excluded.text, opt_a = excluded.opt_a, opt_b = excluded.opt_b,
-       opt_c = excluded.opt_c, opt_d = excluded.opt_d, answer = excluded.answer, active = 1`,
-  );
-  for (const q of QUIZ) upsert.run(...q);
-  const keep = QUIZ.map((q) => q[0]);
-  db.prepare(`UPDATE game_questions SET active = 0 WHERE id NOT IN (${keep.map(() => "?").join(",")})`).run(...keep);
+  // Added with question categories: questions are grouped, one category is "in use" for new rounds,
+  // each round keeps the category it started with, and each answer remembers which hit asked it.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS game_categories (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      name        TEXT NOT NULL UNIQUE,
+      in_use      INTEGER NOT NULL DEFAULT 0,
+      created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+  const addCol = (table: string, col: string, ddl: string) => {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+    if (!cols.some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+  };
+  addCol("game_questions", "category_id", "category_id INTEGER REFERENCES game_categories(id)");
+  addCol("game_rounds", "category_id", "category_id INTEGER REFERENCES game_categories(id)");
+  addCol("game_answers", "trigger_hit", "trigger_hit INTEGER");
+
+  // First start with categories: the existing questions become "Kitar Semula" (in use), and the
+  // Tenaga questions arrive as a second category. After this the admin page owns the questions.
+  const catCount = db.prepare("SELECT COUNT(*) AS n FROM game_categories").get() as { n: number };
+  if (catCount.n === 0) {
+    const qCount = db.prepare("SELECT COUNT(*) AS n FROM game_questions").get() as { n: number };
+    const ins = db.prepare(
+      "INSERT INTO game_questions (category_id, text, opt_a, opt_b, opt_c, opt_d, answer) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    );
+    const kitar = Number(db.prepare("INSERT INTO game_categories (name, in_use) VALUES ('Kitar Semula', 1)").run().lastInsertRowid);
+    if (qCount.n === 0) for (const [, ...q] of QUIZ) ins.run(kitar, ...q);
+    db.prepare("UPDATE game_questions SET category_id = ? WHERE category_id IS NULL").run(kitar);
+    db.prepare("UPDATE game_questions SET active = 0 WHERE id = 6 AND text LIKE 'Apakah kepentingan pengasingan sisa%'").run(); // removed: repeated Q5
+    const tenaga = Number(db.prepare("INSERT INTO game_categories (name) VALUES ('Tenaga')").run().lastInsertRowid);
+    for (const q of TENAGA) ins.run(tenaga, ...q);
+  }
 
   // The target's key comes from the environment on the server. Unlike the scale, a missing key
   // must not stop the app: the game's device API just stays closed until LASER_DEVICE_KEY is set.
