@@ -1,4 +1,5 @@
-// Questions from "soalan Power Shoot.docx", seeded into game_questions on first start.
+// Questions from "soalan Power Shoot.docx". This list is the source of truth: on every start the
+// database is synced to it (edits applied, removed ids switched off). Q6 was removed: it repeated Q5.
 // [id, question, option A, option B, option C, option D, index of the correct option (0 = A)]
 export const QUIZ: [number, string, string, string, string, string, number][] = [
   [1, "Apakah jenis plastik yang biasanya digunakan untuk menghasilkan botol air mineral?",
@@ -15,8 +16,6 @@ export const QUIZ: [number, string, string, string, string, string, number][] = 
     "Meningkatkan jumlah sampah ke tapak pelupusan",
     "Mengelakkan pencemaran dan meningkatkan kualiti bahan kitar semula",
     "Memudahkan semua sampah dibakar", "Mengurangkan keperluan tong sampah", 1],
-  [6, "Apakah kepentingan pengasingan sisa di punca?",
-    "Mengurangkan kos pengurusan", "Memudahkan proses kitar semula", "Meningkatkan jumlah sisa", "Melambatkan kutipan sampah", 1],
   [7, "Mengapakah kaca boleh dikitar semula berulang kali?",
     "Kaca tidak boleh pecah", "Kaca boleh dilebur dan dibentuk semula tanpa kehilangan kualiti yang ketara",
     "Kaca boleh dimakan", "Kaca akan menjadi plastik", 1],

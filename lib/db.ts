@@ -171,13 +171,16 @@ function migrateGame() {
     db.exec("CREATE UNIQUE INDEX IF NOT EXISTS game_rounds_token ON game_rounds(token)");
   }
 
-  const qCount = db.prepare("SELECT COUNT(*) AS n FROM game_questions").get() as { n: number };
-  if (qCount.n === 0) {
-    const ins = db.prepare(
-      "INSERT INTO game_questions (id, text, opt_a, opt_b, opt_c, opt_d, answer) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    );
-    for (const q of QUIZ) ins.run(...q);
-  }
+  // Sync the question bank to lib/quiz.ts. Removed questions are switched off, not deleted: past
+  // answers still point at them.
+  const upsert = db.prepare(
+    `INSERT INTO game_questions (id, text, opt_a, opt_b, opt_c, opt_d, answer, active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+     ON CONFLICT(id) DO UPDATE SET text = excluded.text, opt_a = excluded.opt_a, opt_b = excluded.opt_b,
+       opt_c = excluded.opt_c, opt_d = excluded.opt_d, answer = excluded.answer, active = 1`,
+  );
+  for (const q of QUIZ) upsert.run(...q);
+  const keep = QUIZ.map((q) => q[0]);
+  db.prepare(`UPDATE game_questions SET active = 0 WHERE id NOT IN (${keep.map(() => "?").join(",")})`).run(...keep);
 
   // The target's key comes from the environment on the server. Unlike the scale, a missing key
   // must not stop the app: the game's device API just stays closed until LASER_DEVICE_KEY is set.
